@@ -72,8 +72,7 @@ pdd4;***************************************************************************
   PDD0:				equ $DF04	;; Port 0 Data Direction Register
 
   PIBER:			equ $DF79 ;; parallel port interface
-  CLKCTL:	      	equ $DF60 ;; clock control
-
+  
   PD7:  			equ $DF23 ;; Port 7 Data Register
   PD6:  			equ $DF22 ;; Port 6 Data Register
   PD5:  			equ $DF21 ;; Port 5 Data Register
@@ -224,22 +223,6 @@ pdd4;***************************************************************************
 		sta TIFR    ; clear all timer flags
 		sta EIFR    ; clear all edge flags
 		
-		;-------------------------------------------------------------------------
-		; Switch W65C265S to high-speed external clock (XTLI)
-		;-------------------------------------------------------------------------
-
-		lda CLKCTL
-		ora #%00100000      ; set bit 5 → select XTLI as clock source
-		sta CLKCTL
-
-		; Optional: adjust prescaler if needed
-		; Example: no divide (full speed)
-		lda CLKCTL
-		and #%11100000      ; clear divider bits
-		sta CLKCTL
-		;-------------------------------------------------------------------------
-		;-------------------------------------------------------------------------
-
 		lda #$00	; disable PIB
 		sta PIBER
 
