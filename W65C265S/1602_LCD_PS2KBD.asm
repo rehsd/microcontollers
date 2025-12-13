@@ -200,8 +200,9 @@ pdd4;***************************************************************************
 		;org	$2000
 		
 		org		$8000
-		db 		"WDC"
+		db 		"WDC"		; monitor ROM will jump to $8004
 
+		org		$8004
 	START:
 		;the monitor rom should be in native mode (per easysxb m,x values) when jumping to this - need to verify
 
