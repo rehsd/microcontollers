@@ -1,7 +1,7 @@
 ; ************** TO DO ****************************************
 ;
 ; -Lots of cleanup for 8bit vs 16 bit A, X Registers
-; -Expand keyboard functionality (shift, non-ascii keys)
+; -Expand keyboard functionality (e.g., non-ascii keys)
 ;
 ; *************************************************************
 
