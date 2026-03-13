@@ -1,0 +1,24 @@
+###############################################################################
+#                                                                             #
+# Calypsi assembler for 65816                                    version 5.15 #
+#                                                       08/Mar/2026  12:26:52 #
+# Command line: D:\source\VSCode\65265 assembly\src\debug/entry.s -o          #
+#               D:\source\VSCode\65265 assembly\src\debug/build/entry.o       #
+#               --list-file=D:\source\VSCode\65265 assembly\src\debug/build/entry.lst #
+#                                                                             #
+###############################################################################
+
+0001                      .extern __program_start
+0002                      //.section appentry,text
+0003                      .public app_entry
+0004                      app_entry:
+0005  000000 5c           .byte 0x5c
+0006  000001 ........     .long __program_start
+
+##########################
+#                        #
+# Memory sizes (decimal) #
+#                        #
+##########################
+
+Executable  (Text): 5 bytes
