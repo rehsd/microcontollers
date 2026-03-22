@@ -1,0 +1,18 @@
+{
+  "configurations": [
+    {
+      "name": "Calypsi",
+      "includePath": [
+        "${workspaceFolder}/src/include",
+        "D:/calypsi-65816-5.15/include"
+      ],
+      "defines": [
+        "__INTELLISENSE__"
+      ],
+      //"compilerPath": "D:\\calypsi-65816-5.15\\bin\\cc65816.exe",
+      "compilerPath": "",
+      "cStandard": "c17"
+    }
+  ],
+  "version": 4
+}

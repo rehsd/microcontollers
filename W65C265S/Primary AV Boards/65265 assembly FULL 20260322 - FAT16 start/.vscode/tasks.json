@@ -1,0 +1,59 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "shell": {
+      "executable": "cmd.exe",
+      "args": ["/d", "/c"]
+    }
+  },
+    "tasks": [
+    {
+      "label": "calypsi-build",
+      "type": "shell",
+      "command": "cc65816.exe",
+      "args": [
+        "--code-model=large",
+        "--data-model=small",
+        "-c",
+        "${file}",
+        "-o",
+        "${fileDirname}/build/main.o",
+        "--list-file=${fileDirname}/build/main_assembled.lst"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "calypsi-link",
+      "type": "shell",
+      "command": "ln65816.exe",
+      "args": [
+        //"--cstartup=none",
+        "--output-format=raw",
+        //"--root-symbol=app_entry",
+        "--root-symbol=main",
+        "--program-start=main",
+        "--raw-multiple-memories",
+        "--no-data-init-table-section",
+        "--stack-size=0x17FF",
+        "${fileDirname}/build/main.o",
+        "${fileDirname}/rules.scm",
+        "-o",
+        "${fileDirname}/build/app.bin",
+        "--list-file=${fileDirname}/build/main_linked.lst"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "calypsi-all",
+      "dependsOn": [
+        // "calypsi-assemble-entry",
+        "calypsi-build",
+        "calypsi-link"
+      ],
+      "dependsOrder": "sequence",
+      "group": "build"
+    }
+  ]
+}

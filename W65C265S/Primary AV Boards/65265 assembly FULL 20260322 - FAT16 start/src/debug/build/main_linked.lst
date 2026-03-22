@@ -1,0 +1,1042 @@
+###############################################################################
+#                                                                             #
+# Calypsi linker for 65816                                       version 5.15 #
+#                                                       22/Mar/2026  14:32:42 #
+# Command line: --output-format=raw --root-symbol=main --program-start=main   #
+#               --raw-multiple-memories --no-data-init-table-section          #
+#               --stack-size=0x17FF                                           #
+#               D:\source\VSCode\65265 assembly\src\debug/build/main.o        #
+#               D:\source\VSCode\65265 assembly\src\debug/rules.scm -o        #
+#               D:\source\VSCode\65265 assembly\src\debug/build/app.bin       #
+#               --list-file=D:\source\VSCode\65265 assembly\src\debug/build/main_linked.lst #
+#                                                                             #
+###############################################################################
+
+####################
+#                  #
+# Memories summary #
+#                  #
+####################
+
+Name                    Range         Size    Used    Checksum  Largest unallocated
+-----------------------------------------------------------------------------------
+CS2B_ONCHIP_RAM         000000-0001ff 000200    0.0%  none      000200
+CS3B_SRAM               000000-007fff 008000    0.0%  none      008000
+APP_ZP-tiny             002000-0020ff 000100    7.8%  none      0000ec
+APP_ZP                  002100-002fff 000f00    0.0%  none      000f00
+APP_FIXED_ENTRY         004000-004003 000004    0.0%  none      000004
+APP_RAM_DATA            004004-005fff 001ffc   88.0%  none      0003d6
+  > APP_RAM_DATA-cbits  004004-004390 00038d  100.0%  none      none
+  > APP_RAM_DATA-nobits 004391-005c29 001899  100.0%  none      0003d6
+APP_STACK_MEM           006000-006fff 001000    0.0%  none      001000
+CS4B_FLASH              008000-00ffe3 007fe4    0.0%  none      008000
+CS0B_EXT_CS0            00df00-00df1f 000020    0.0%  none      000020
+CS1B_EXT_CS1            00dfc0-00dfff 000040    0.0%  none      000040
+CS2B_ONCHIP_ROM         00e000-00feff 001f00    0.0%  none      001f00
+CS4B_FLASH-vector       00ffe4-00ffff 00001c    7.1%  none      007ffc
+CS5B_SRAM-01            010000-01ffff 010000    0.0%  none      010000
+CS5B_SRAM-02            020000-02ffff 010000    0.0%  none      010000
+CS5B_SRAM-03            030000-03ffff 010000    0.0%  none      010000
+CS5B_SRAM-04            040000-04ffff 010000    0.0%  none      010000
+CS6B_FLASH              040000-047fff 008000    0.0%  none      008000
+CS5B_SRAM-05            050000-05ffff 010000    0.0%  none      010000
+APP_RAM_CODE            060000-06ffff 010000    8.6%  none      00e9e1
+CS5B_SRAM-06            060000-06ffff 010000    0.0%  none      010000
+CS5B_SRAM-07            070000-07ffff 010000    0.0%  none      010000
+CS7B_VGA_VRAM           0ea000-0ebfff 002000    0.0%  none      002000
+CS7B_GAL_SRAM           0f0000-0f07ff 000800    0.0%  none      000800
+
+
+####################
+#                  #
+# Sections summary #
+#                  #
+####################
+
+Name      Range          Size    Memory              Fragments
+--------------------------------------------------------------
+registers 002000-002013  000014  APP_ZP-tiny         1
+cdata     004004-00436c  000369  APP_RAM_DATA-cbits  40
+code      00436d-004390  000024  APP_RAM_DATA-cbits  2
+zdata     004391-00442a  00009a  APP_RAM_DATA-nobits 11
+stack     00442b-005c29  0017ff  APP_RAM_DATA-nobits 1
+reset     00fffc-00fffd  000002  CS4B_FLASH-vector   1
+farcode   060000-06161e  00161f  APP_RAM_CODE        31
+
+
+###################
+#                 #
+# Placement rules #
+#                 #
+###################
+
+Name                     Address range  Key
+----------------------------------------------------------------------
+APP_FIXED_ENTRY          004000-004003  Plain
+  APP_FIXED_ENTRY-nobits 004000-004003  Plain and BSS
+    > zdata
+    > stack
+  APP_FIXED_ENTRY-bits   004000-004003  Plain and DATA
+  APP_FIXED_ENTRY-cbits  004000-004003  Plain and RODATA
+    > cdata
+  APP_FIXED_ENTRY-code   004000-004003  PlainFunction and TEXT
+    > code
+APP_RAM_CODE             060000-06ffff  TEXT, RODATA and DATA
+  > farcode
+  APP_RAM_CODE-NoBits    060000-06ffff  BSS
+APP_RAM_DATA             004004-005fff  Plain
+  APP_RAM_DATA-nobits    004004-005fff  Plain and BSS
+    > zdata
+    > stack
+  APP_RAM_DATA-bits      004004-005fff  Plain and DATA
+  APP_RAM_DATA-cbits     004004-005fff  Plain and RODATA
+    > cdata
+  APP_RAM_DATA-code      004004-005fff  PlainFunction and TEXT
+    > code
+APP_STACK_MEM            006000-006fff  Plain
+  APP_STACK_MEM-nobits   006000-006fff  Plain and BSS
+    > zdata
+    > stack
+  APP_STACK_MEM-bits     006000-006fff  Plain and DATA
+  APP_STACK_MEM-cbits    006000-006fff  Plain and RODATA
+    > cdata
+  APP_STACK_MEM-code     006000-006fff  PlainFunction and TEXT
+    > code
+APP_ZP                   002100-002fff  Plain
+  APP_ZP-nobits          002100-002fff  Plain and BSS
+    > zdata
+    > stack
+  APP_ZP-bits            002100-002fff  Plain and DATA
+  APP_ZP-cbits           002100-002fff  Plain and RODATA
+    > cdata
+  APP_ZP-code            002100-002fff  PlainFunction and TEXT
+    > code
+APP_ZP-tiny              002000-0020ff  Tiny and BSS
+  > registers
+CS0B_EXT_CS0             00df00-00df1f  Plain
+  CS0B_EXT_CS0-nobits    00df00-00df1f  Plain and BSS
+    > zdata
+    > stack
+  CS0B_EXT_CS0-bits      00df00-00df1f  Plain and DATA
+  CS0B_EXT_CS0-cbits     00df00-00df1f  Plain and RODATA
+    > cdata
+  CS0B_EXT_CS0-code      00df00-00df1f  PlainFunction and TEXT
+    > code
+CS1B_EXT_CS1             00dfc0-00dfff  Plain
+  CS1B_EXT_CS1-nobits    00dfc0-00dfff  Plain and BSS
+    > zdata
+    > stack
+  CS1B_EXT_CS1-bits      00dfc0-00dfff  Plain and DATA
+  CS1B_EXT_CS1-cbits     00dfc0-00dfff  Plain and RODATA
+    > cdata
+  CS1B_EXT_CS1-code      00dfc0-00dfff  PlainFunction and TEXT
+    > code
+CS2B_ONCHIP_RAM          000000-0001ff  Plain
+  CS2B_ONCHIP_RAM-nobits 000000-0001ff  Plain and BSS
+    > zdata
+    > stack
+  CS2B_ONCHIP_RAM-bits   000000-0001ff  Plain and DATA
+  CS2B_ONCHIP_RAM-cbits  000000-0001ff  Plain and RODATA
+    > cdata
+  CS2B_ONCHIP_RAM-code   000000-0001ff  PlainFunction and TEXT
+    > code
+CS2B_ONCHIP_ROM          00e000-00feff  Plain
+  CS2B_ONCHIP_ROM-nobits 00e000-00feff  Plain and BSS
+    > zdata
+    > stack
+  CS2B_ONCHIP_ROM-bits   00e000-00feff  Plain and DATA
+  CS2B_ONCHIP_ROM-cbits  00e000-00feff  Plain and RODATA
+    > cdata
+  CS2B_ONCHIP_ROM-code   00e000-00feff  PlainFunction and TEXT
+    > code
+CS3B_SRAM                000000-007fff  Plain
+  CS3B_SRAM-nobits       000000-007fff  Plain and BSS
+    > zdata
+    > stack
+  CS3B_SRAM-bits         000000-007fff  Plain and DATA
+  CS3B_SRAM-cbits        000000-007fff  Plain and RODATA
+    > cdata
+  CS3B_SRAM-code         000000-007fff  PlainFunction and TEXT
+    > code
+CS4B_FLASH-vector        00ffe4-00ffff  Plain
+  > (reset 00fffc)
+CS4B_FLASH               008000-00ffe3  Plain
+  CS4B_FLASH-nobits      008000-00ffe3  Plain and BSS
+    > zdata
+    > stack
+  CS4B_FLASH-bits        008000-00ffe3  Plain and DATA
+  CS4B_FLASH-cbits       008000-00ffe3  Plain and RODATA
+    > cdata
+  CS4B_FLASH-code        008000-00ffe3  PlainFunction and TEXT
+    > code
+CS5B_SRAM-01             010000-01ffff  Far
+  CS5B_SRAM-01-farcode   010000-01ffff  FarFunction and TEXT
+    > farcode
+CS5B_SRAM-02             020000-02ffff  Far
+  CS5B_SRAM-02-farcode   020000-02ffff  FarFunction and TEXT
+    > farcode
+CS5B_SRAM-03             030000-03ffff  Far
+  CS5B_SRAM-03-farcode   030000-03ffff  FarFunction and TEXT
+    > farcode
+CS5B_SRAM-04             040000-04ffff  Far
+  CS5B_SRAM-04-farcode   040000-04ffff  FarFunction and TEXT
+    > farcode
+CS5B_SRAM-05             050000-05ffff  Far
+  CS5B_SRAM-05-farcode   050000-05ffff  FarFunction and TEXT
+    > farcode
+CS5B_SRAM-06             060000-06ffff  Far
+  CS5B_SRAM-06-farcode   060000-06ffff  FarFunction and TEXT
+    > farcode
+CS5B_SRAM-07             070000-07ffff  Far
+  CS5B_SRAM-07-farcode   070000-07ffff  FarFunction and TEXT
+    > farcode
+CS6B_FLASH               040000-047fff  TEXT, RODATA and DATA
+  > farcode
+  CS6B_FLASH-NoBits      040000-047fff  BSS
+CS7B_GAL_SRAM            0f0000-0f07ff  TEXT, RODATA and DATA
+  > farcode
+  CS7B_GAL_SRAM-NoBits   0f0000-0f07ff  BSS
+CS7B_VGA_VRAM            0ea000-0ebfff  TEXT, RODATA and DATA
+  > farcode
+  CS7B_VGA_VRAM-NoBits   0ea000-0ebfff  BSS
+
+Name  Size   Align
+-------------------
+stack 0017ff no
+
+Name             Memory      Offset
+------------------------------------
+_DirectPageStart APP_ZP-tiny 000000
+
+################
+#              #
+# Object files #
+#              #
+################
+
+Unit Filename                                               Archive
+------------------------------------------------------------------------
+  0  D:\source\VSCode\65265 assembly\src\debug/build/main.o -
+          >  cdata   000369
+          >  farcode 001569
+          >  zdata   000014
+  2  cstartup.o                                             clib-lc-sd.a
+          # picked based on cstartup=normal (built-in default)
+          >  code    000024
+          >  farcode 000001
+          >  reset   000002
+  3  exit.o                                                 clib-lc-sd.a
+          # picked based on exit=stdexit (built-in default)
+          >  farcode 000053
+  5  controlFlow.o                                          clib-lc-sd.a
+          >  farcode 00000e
+  6  pseudoRegisters.o                                      clib-lc-sd.a
+          >  registers 000014
+  7  atexit.o                                               clib-lc-sd.a
+          >  zdata 000082
+  8  exitC99.o                                              clib-lc-sd.a
+          >  farcode 000005
+  9  defaultExit.o                                          clib-lc-sd.a
+          >  farcode 000001
+ 11  streamlist.o                                           clib-lc-sd.a
+          >  zdata 000004
+ 12  integer.o                                              clib-lc-sd.a
+          >  farcode 00004e
+
+###################
+#                 #
+# Cross reference #
+#                 #
+###################
+
+_Dp in section 'registers'  placed at address 002000-002013 of size 000014
+(pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+    Defines:
+        _Vfp = 002010
+        _Dp = 002000
+    Referenced from:
+        print_hex32 (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 79)
+        format_fat_name (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 81)
+        rd16 (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 82)
+        rd32 (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 83)
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+        delete_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+        (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 88)
+        ... 9 more
+
+`_StringLiteral_ ---` in section 'cdata'
+ placed at address 004004-004008 of size 000005
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 10)
+    Defines:
+        `_StringLiteral_ ---` = 004004
+    Referenced from:
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+
+`_StringLiteral_--- ` in section 'cdata'
+ placed at address 004009-00400d of size 000005
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 11)
+    Defines:
+        `_StringLiteral_--- ` = 004009
+    Referenced from:
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+
+`_StringLiteral_      ` in section 'cdata'
+ placed at address 00400e-004014 of size 000007
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 6)
+    Defines:
+        `_StringLiteral_      ` = 00400e
+    Referenced from:
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+
+`_StringLiteral_<DIR> ` in section 'cdata'
+ placed at address 004015-00401b of size 000007
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 13)
+    Defines:
+        `_StringLiteral_<DIR> ` = 004015
+    Referenced from:
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+
+`_StringLiteral_<VOL> ` in section 'cdata'
+ placed at address 00401c-004022 of size 000007
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 14)
+    Defines:
+        `_StringLiteral_<VOL> ` = 00401c
+    Referenced from:
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+
+`_StringLiteral_FILE1.TXT` in section 'cdata'
+ placed at address 004023-00402c of size 00000a
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 22)
+    Defines:
+        `_StringLiteral_FILE1.TXT` = 004023
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_hello.txt` in section 'cdata'
+ placed at address 00402d-004036 of size 00000a
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 43)
+    Defines:
+        `_StringLiteral_hello.txt` = 00402d
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Read Error.` in section 'cdata'
+ placed at address 004037-004042 of size 00000c
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 29)
+    Defines:
+        `_StringLiteral_Read Error.` = 004037
+    Referenced from:
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+
+`_StringLiteral_FS not init.` in section 'cdata'
+ placed at address 004043-00404f of size 00000d
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 23)
+    Defines:
+        `_StringLiteral_FS not init.` = 004043
+    Referenced from:
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+
+`_StringLiteral_Dir Read Error` in section 'cdata'
+ placed at address 004050-00405e of size 00000f
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 16)
+    Defines:
+        `_StringLiteral_Dir Read Error` = 004050
+    Referenced from:
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+
+hex_digits in section 'cdata'  placed at address 00405f-00406f of size 000011
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 3)
+
+`_StringLiteral_data_lba_start: ` in section 'cdata'
+ placed at address 004070-004080 of size 000011
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 41)
+    Defines:
+        `_StringLiteral_data_lba_start: ` = 004070
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+
+`_StringLiteral_fat_size_secs:  ` in section 'cdata'
+ placed at address 004081-004091 of size 000011
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 42)
+    Defines:
+        `_StringLiteral_fat_size_secs:  ` = 004081
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+
+`_StringLiteral_part_lba_start: ` in section 'cdata'
+ placed at address 004092-0040a2 of size 000011
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 44)
+    Defines:
+        `_StringLiteral_part_lba_start: ` = 004092
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+
+`_StringLiteral_Read back failed!` in section 'cdata'
+ placed at address 0040a3-0040b4 of size 000012
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 30)
+    Defines:
+        `_StringLiteral_Read back failed!` = 0040a3
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_------------------` in section 'cdata'
+ placed at address 0040b5-0040c7 of size 000013
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 12)
+    Defines:
+        `_StringLiteral_------------------` = 0040b5
+    Referenced from:
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+
+`_StringLiteral_FAT16 Init Failed.` in section 'cdata'
+ placed at address 0040c8-0040da of size 000013
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 20)
+    Defines:
+        `_StringLiteral_FAT16 Init Failed.` = 0040c8
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_FAT16 System Ready` in section 'cdata'
+ placed at address 0040db-0040ed of size 000013
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 21)
+    Defines:
+        `_StringLiteral_FAT16 System Ready` = 0040db
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Listing Directory:` in section 'cdata'
+ placed at address 0040ee-004100 of size 000013
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 27)
+    Defines:
+        `_StringLiteral_Listing Directory:` = 0040ee
+    Referenced from:
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+
+`_StringLiteral_  root_sz_secs:     ` in section 'cdata'
+ placed at address 004101-004115 of size 000015
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 7)
+    Defines:
+        `_StringLiteral_  root_sz_secs:     ` = 004101
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+
+`_StringLiteral_  rsvd_sec_cnt:     ` in section 'cdata'
+ placed at address 004116-00412a of size 000015
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 8)
+    Defines:
+        `_StringLiteral_  rsvd_sec_cnt:     ` = 004116
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+
+`_StringLiteral_  secs_per_cluster: ` in section 'cdata'
+ placed at address 00412b-00413f of size 000015
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 9)
+    Defines:
+        `_StringLiteral_  secs_per_cluster: ` = 00412b
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+
+`_StringLiteral_Write failed! Error: ` in section 'cdata'
+ placed at address 004140-004155 of size 000016
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 39)
+    Defines:
+        `_StringLiteral_Write failed! Error: ` = 004140
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Error: File not found.` in section 'cdata'
+ placed at address 004156-00416c of size 000017
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 18)
+    Defines:
+        `_StringLiteral_Error: File not found.` = 004156
+    Referenced from:
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+
+`_StringLiteral_Finished SD card test!` in section 'cdata'
+ placed at address 00416d-004183 of size 000017
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 24)
+    Defines:
+        `_StringLiteral_Finished SD card test!` = 00416d
+    Referenced from:
+        main (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 93)
+
+`_StringLiteral_Success: File created.` in section 'cdata'
+ placed at address 004184-00419a of size 000017
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 37)
+    Defines:
+        `_StringLiteral_Success: File created.` = 004184
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Hello from R265Nibbler!` in section 'cdata'
+ placed at address 00419b-0041b2 of size 000018
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 25)
+    Defines:
+        `_StringLiteral_Hello from R265Nibbler!` = 00419b
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Write command accepted!` in section 'cdata'
+ placed at address 0041b3-0041ca of size 000018
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 38)
+    Defines:
+        `_StringLiteral_Write command accepted!` = 0041b3
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Initializing SD card... ` in section 'cdata'
+ placed at address 0041cb-0041e3 of size 000019
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 26)
+    Defines:
+        `_StringLiteral_Initializing SD card... ` = 0041cb
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Writing to sector 0x0020... ` in section 'cdata'
+ placed at address 0041e4-004200 of size 00001d
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 40)
+    Defines:
+        `_StringLiteral_Writing to sector 0x0020... ` = 0041e4
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Attempting to read SD card... ` in section 'cdata'
+ placed at address 004201-00421f of size 00001f
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 15)
+    Defines:
+        `_StringLiteral_Attempting to read SD card... ` = 004201
+    Referenced from:
+        main (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 93)
+
+`_StringLiteral_Reading back sector 0x0020... ` in section 'cdata'
+ placed at address 004220-00423e of size 00001f
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 31)
+    Defines:
+        `_StringLiteral_Reading back sector 0x0020... ` = 004220
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Preparing test data in buffer...` in section 'cdata'
+ placed at address 00423f-00425f of size 000021
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 28)
+    Defines:
+        `_StringLiteral_Preparing test data in buffer...` = 00423f
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Existing file found - deleting...` in section 'cdata'
+ placed at address 004260-004281 of size 000022
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 19)
+    Defines:
+        `_StringLiteral_Existing file found - deleting...` = 004260
+    Referenced from:
+        delete_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+
+`_StringLiteral_SD card initialized successfully!` in section 'cdata'
+ placed at address 004282-0042a3 of size 000022
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 34)
+    Defines:
+        `_StringLiteral_SD card initialized successfully!` = 004282
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Error: File creation failed code: ` in section 'cdata'
+ placed at address 0042a4-0042c6 of size 000023
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 17)
+    Defines:
+        `_StringLiteral_Error: File creation failed code: ` = 0042a4
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Sector read failed with error code: ` in section 'cdata'
+ placed at address 0042c7-0042eb of size 000025
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 35)
+    Defines:
+        `_StringLiteral_Sector read failed with error code: ` = 0042c7
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Reading sector 0x0000 from SD card... ` in section 'cdata'
+ placed at address 0042ec-004312 of size 000027
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 32)
+    Defines:
+        `_StringLiteral_Reading sector 0x0000 from SD card... ` = 0042ec
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_Sector read successfully! First 16 bytes:` in section 'cdata'
+ placed at address 004313-00433c of size 00002a
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 36)
+    Defines:
+        `_StringLiteral_Sector read successfully! First 16 bytes:` = 004313
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+`_StringLiteral_SD card initialization failed with error code: ` in section 'cdata'
+ placed at address 00433d-00436c of size 000030
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 33)
+    Defines:
+        `_StringLiteral_SD card initialization failed with error code: ` = 00433d
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+__program_start in section 'code'
+ placed at address 00436d-004385 of size 000019
+(cstartup.o (from clib-lc-sd.a) unit 2 section index 2)
+    Defines:
+        __program_start = 00436d
+    References:
+        _DirectPageStart
+        .sectionEnd(stack)
+        _Vfp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+        __low_level_init in (cstartup.o (from clib-lc-sd.a) unit 2 section index 8)
+    Referenced from:
+        __program_root_section (cstartup.o (from clib-lc-sd.a) unit 2 section index 7)
+
+Section 'code'  placed at address 004386-004390 of size 00000b
+(cstartup.o (from clib-lc-sd.a) unit 2 section index 6)
+    References:
+        exit in (exit.o (from clib-lc-sd.a) unit 3 section index 2)
+        main in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 93)
+
+__atexit_index in section 'zdata'
+ placed at address 004391-004392 of size 000002
+(atexit.o (from clib-lc-sd.a) unit 7 section index 3)
+    Defines:
+        __atexit_index = 004391
+    Referenced from:
+        exit (exit.o (from clib-lc-sd.a) unit 3 section index 2)
+
+__atexit in section 'zdata'  placed at address 004393-004412 of size 000080
+(atexit.o (from clib-lc-sd.a) unit 7 section index 2)
+    Defines:
+        __atexit = 004393
+    Referenced from:
+        exit (exit.o (from clib-lc-sd.a) unit 3 section index 2)
+
+_ExitCloseStreams in section 'zdata'
+ placed at address 004413-004416 of size 000004
+(streamlist.o (from clib-lc-sd.a) unit 11 section index 2)
+    Defines:
+        _ExitCloseStreams = 004413
+    Referenced from:
+        exit (exit.o (from clib-lc-sd.a) unit 3 section index 2)
+
+g_sectors_per_cluster in section 'zdata'
+ placed at address 004417-004417 of size 000001
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 56)
+    Defines:
+        g_sectors_per_cluster = 004417
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+        create_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 91)
+
+g_data_lba_start in section 'zdata'
+ placed at address 004418-00441b of size 000004
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 55)
+    Defines:
+        g_data_lba_start = 004418
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+        create_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 91)
+
+g_root_sz_sects in section 'zdata'
+ placed at address 00441c-00441d of size 000002
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 54)
+    Defines:
+        g_root_sz_sects = 00441c
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+        delete_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+        create_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 91)
+
+g_root_lba_start in section 'zdata'
+ placed at address 00441e-004421 of size 000004
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 53)
+    Defines:
+        g_root_lba_start = 00441e
+    Referenced from:
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+        delete_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+        create_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 91)
+
+g_fat_size_sectors in section 'zdata'
+ placed at address 004422-004423 of size 000002
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 50)
+    Defines:
+        g_fat_size_sectors = 004422
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+        delete_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+        (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 90)
+
+g_rsvd_sec_cnt in section 'zdata'
+ placed at address 004424-004425 of size 000002
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 49)
+    Defines:
+        g_rsvd_sec_cnt = 004424
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+        delete_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+        (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 90)
+
+g_partition_lba_start in section 'zdata'
+ placed at address 004426-004429 of size 000004
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 48)
+    Defines:
+        g_partition_lba_start = 004426
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+        delete_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+        (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 90)
+
+g_fat_initialized in section 'zdata'
+ placed at address 00442a-00442a of size 000001
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 46)
+    Defines:
+        g_fat_initialized = 00442a
+    Referenced from:
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+        list_root_directory (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+        delete_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+        create_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 91)
+
+Section 'stack'  placed at address 00442b-005c29 of size 0017ff
+(linker generated)
+
+__program_root_section in section 'reset'
+ placed at address 00fffc-00fffd of size 000002
+(cstartup.o (from clib-lc-sd.a) unit 2 section index 7)
+    Defines:
+        __program_root_section = 00fffc
+    References:
+        __program_start in (cstartup.o (from clib-lc-sd.a) unit 2 section index 2)
+
+_Stub_exit in section 'farcode'  placed at address 060000-060000 of size 000001
+(defaultExit.o (from clib-lc-sd.a) unit 9 section index 2)
+    Defines:
+        _Stub_exit = 060000
+    Referenced from:
+        _Exit (exitC99.o (from clib-lc-sd.a) unit 8 section index 2)
+
+__low_level_init in section 'farcode'
+ placed at address 060001-060001 of size 000001
+(cstartup.o (from clib-lc-sd.a) unit 2 section index 8)
+    Defines:
+        __low_level_init = 060001
+    Referenced from:
+        __program_start (cstartup.o (from clib-lc-sd.a) unit 2 section index 2)
+
+os_newline in section 'farcode'  placed at address 060002-060004 of size 000003
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 61)
+
+os_c_return in section 'farcode'
+ placed at address 060005-060007 of size 000003
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 62)
+
+_Exit in section 'farcode'  placed at address 060008-06000c of size 000005
+(exitC99.o (from clib-lc-sd.a) unit 8 section index 2)
+    Defines:
+        _Exit = 060008
+    References:
+        _Stub_exit in (defaultExit.o (from clib-lc-sd.a) unit 9 section index 2)
+    Referenced from:
+        exit (exit.o (from clib-lc-sd.a) unit 3 section index 2)
+
+os_print_char in section 'farcode'
+ placed at address 06000d-060016 of size 00000a
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 60)
+
+sdcard_init in section 'farcode'
+ placed at address 060017-060020 of size 00000a
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 65)
+
+_JmpIndLong in section 'farcode'
+ placed at address 060021-06002e of size 00000e
+(controlFlow.o (from clib-lc-sd.a) unit 5 section index 3)
+    Defines:
+        _JmpIndLong = 060021
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+    Referenced from:
+        exit (exit.o (from clib-lc-sd.a) unit 3 section index 2)
+
+sdcard_read_sector in section 'farcode'
+ placed at address 06002f-060041 of size 000013
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 66)
+
+sdcard_write_sector in section 'farcode'
+ placed at address 060042-060054 of size 000013
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 67)
+
+rd16 in section 'farcode'  placed at address 060055-060072 of size 00001e
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 82)
+    Defines:
+        rd16 = 060055
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+    Referenced from:
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+
+_DivModSign16 in section 'farcode'
+ placed at address 060073-06007a of size 000008
+(integer.o (from clib-lc-sd.a) unit 12 section index 9)
+    Defines:
+        _DivModSign16 = 060073
+
+_DivModSign32 in section 'farcode'
+ placed at address 06007b-060090 of size 000016
+(integer.o (from clib-lc-sd.a) unit 12 section index 14)
+    Defines:
+        _DivModSign32 = 06007b
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+
+main in section 'farcode'  placed at address 060091-0600b3 of size 000023
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 93)
+    Defines:
+        main = 060091
+    References:
+        `_StringLiteral_Attempting to read SD card... ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 15)
+        `_StringLiteral_Finished SD card test!` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 24)
+        fat16_test in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+    Referenced from:
+        (cstartup.o (from clib-lc-sd.a) unit 2 section index 6)
+
+os_puts in section 'farcode'  placed at address 0600b4-0600da of size 000027
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 63)
+
+bcd_to_bin in section 'farcode'  placed at address 0600db-060104 of size 00002a
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 88)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 12 section index 2)
+
+_Mul16 in section 'farcode'  placed at address 060105-060134 of size 000030
+(integer.o (from clib-lc-sd.a) unit 12 section index 2)
+    Defines:
+        _Mul16 = 060105
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+    Referenced from:
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+        (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 88)
+        create_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 91)
+
+print_hex in section 'farcode'  placed at address 060135-060174 of size 000040
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 78)
+    Defines:
+        print_hex = 060135
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+exit in section 'farcode'  placed at address 060175-0601c7 of size 000053
+(exit.o (from clib-lc-sd.a) unit 3 section index 2)
+    Defines:
+        exit = 060175
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+        _Exit in (exitC99.o (from clib-lc-sd.a) unit 8 section index 2)
+        _ExitCloseStreams in (streamlist.o (from clib-lc-sd.a) unit 11 section index 2)
+        _JmpIndLong in (controlFlow.o (from clib-lc-sd.a) unit 5 section index 3)
+        __atexit in (atexit.o (from clib-lc-sd.a) unit 7 section index 2)
+        __atexit_index in (atexit.o (from clib-lc-sd.a) unit 7 section index 3)
+    Referenced from:
+        (cstartup.o (from clib-lc-sd.a) unit 2 section index 6)
+
+print_hex32 in section 'farcode'
+ placed at address 0601c8-060230 of size 000069
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 79)
+    Defines:
+        print_hex32 = 0601c8
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+    Referenced from:
+        fat_debug_print (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+
+fat_debug_print in section 'farcode'
+ placed at address 060231-0602a6 of size 000076
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+    Defines:
+        fat_debug_print = 060231
+    References:
+        `_StringLiteral_  root_sz_secs:     ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 7)
+        `_StringLiteral_  rsvd_sec_cnt:     ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 8)
+        `_StringLiteral_  secs_per_cluster: ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 9)
+        `_StringLiteral_data_lba_start: ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 41)
+        `_StringLiteral_fat_size_secs:  ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 42)
+        `_StringLiteral_part_lba_start: ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 44)
+        g_data_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 55)
+        g_fat_size_sectors in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 50)
+        ... 5 more
+    Referenced from:
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+
+rd32 in section 'farcode'  placed at address 0602a7-060334 of size 00008e
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 83)
+    Defines:
+        rd32 = 0602a7
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+    Referenced from:
+        fat_init (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+
+fat_init in section 'farcode'  placed at address 060335-0603ff of size 0000cb
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 84)
+    Defines:
+        fat_init = 060335
+    References:
+        fat_debug_print in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 80)
+        g_data_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 55)
+        g_fat_initialized in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 46)
+        g_fat_size_sectors in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 50)
+        g_partition_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 48)
+        g_root_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 53)
+        g_root_sz_sects in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 54)
+        g_rsvd_sec_cnt in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 49)
+        g_sectors_per_cluster in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 56)
+        rd16 in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 82)
+        rd32 in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 83)
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+get_system_time_fat in section 'farcode'
+ placed at address 060400-0604cf of size 0000d0
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 89)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+
+allocate_cluster in section 'farcode'
+ placed at address 0604d0-060605 of size 000136
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 90)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+        g_fat_size_sectors in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 50)
+        g_partition_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 48)
+        g_rsvd_sec_cnt in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 49)
+
+format_fat_name in section 'farcode'
+ placed at address 060606-060768 of size 000163
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 81)
+    Defines:
+        format_fat_name = 060606
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+    Referenced from:
+        print_file_contents (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+        delete_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+        create_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 91)
+
+delete_file in section 'farcode'
+ placed at address 060769-0609b9 of size 000251
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+    Defines:
+        delete_file = 060769
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+        `_StringLiteral_Existing file found - deleting...` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 19)
+        format_fat_name in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 81)
+        g_fat_initialized in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 46)
+        g_fat_size_sectors in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 50)
+        g_partition_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 48)
+        g_root_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 53)
+        g_root_sz_sects in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 54)
+        g_rsvd_sec_cnt in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 49)
+    Referenced from:
+        create_file (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 91)
+
+fat16_test in section 'farcode'  placed at address 0609ba-060c0c of size 000253
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+    Defines:
+        fat16_test = 0609ba
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+        `_StringLiteral_Error: File creation failed code: ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 17)
+        `_StringLiteral_FAT16 Init Failed.` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 20)
+        `_StringLiteral_FAT16 System Ready` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 21)
+        `_StringLiteral_FILE1.TXT` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 22)
+        `_StringLiteral_Hello from R265Nibbler!` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 25)
+        `_StringLiteral_Initializing SD card... ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 26)
+        `_StringLiteral_Preparing test data in buffer...` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 28)
+        ... 17 more
+    Referenced from:
+        main (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 93)
+
+list_root_directory in section 'farcode'
+ placed at address 060c0d-060e9d of size 000291
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 85)
+    Defines:
+        list_root_directory = 060c0d
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+        `_StringLiteral_      ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 6)
+        `_StringLiteral_<DIR> ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 13)
+        `_StringLiteral_<VOL> ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 14)
+        `_StringLiteral_Dir Read Error` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 16)
+        `_StringLiteral_FS not init.` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 23)
+        `_StringLiteral_Listing Directory:` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 27)
+        g_fat_initialized in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 46)
+        g_root_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 53)
+        g_root_sz_sects in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 54)
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+print_file_contents in section 'farcode'
+ placed at address 060e9e-06124c of size 0003af
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 86)
+    Defines:
+        print_file_contents = 060e9e
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 12 section index 2)
+        `_StringLiteral_ ---` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 10)
+        `_StringLiteral_--- ` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 11)
+        `_StringLiteral_------------------` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 12)
+        `_StringLiteral_Error: File not found.` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 18)
+        `_StringLiteral_FS not init.` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 23)
+        `_StringLiteral_Read Error.` in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 29)
+        ... 6 more
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+create_file in section 'farcode'
+ placed at address 06124d-06161e of size 0003d2
+(D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 91)
+    Defines:
+        create_file = 06124d
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 6 section index 2)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 12 section index 2)
+        delete_file in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 87)
+        format_fat_name in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 81)
+        g_data_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 55)
+        g_fat_initialized in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 46)
+        g_root_lba_start in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 53)
+        g_root_sz_sects in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 54)
+        g_sectors_per_cluster in (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 56)
+    Referenced from:
+        fat16_test (D:\source\VSCode\65265 assembly\src\debug/build/main.o unit 0 section index 92)
+
+##########################
+#                        #
+# Memory sizes (decimal) #
+#                        #
+##########################
+
+Executable       (Text): 6574 bytes
+Data                   :  154 bytes
+Non-initialized        : 6163 bytes
