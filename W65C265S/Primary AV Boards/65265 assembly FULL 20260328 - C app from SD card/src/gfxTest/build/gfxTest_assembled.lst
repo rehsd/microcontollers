@@ -1,0 +1,585 @@
+###############################################################################
+#                                                                             #
+# Calypsi ISO C compiler for 65816                               version 5.15 #
+#                                                       27/Mar/2026  15:08:29 #
+# Command line: --code-model=large --data-model=small -c                      #
+#               D:\source\VSCode\65265 assembly\src\gfxTest\gfxTest.c -o      #
+#               D:\source\VSCode\65265 assembly\src\gfxTest/build/gfxTest.o   #
+#               --list-file=D:\source\VSCode\65265 assembly\src\gfxTest/build/gfxTest_assembled.lst #
+#                                                                             #
+###############################################################################
+
+    \ 000000                      .rtmodel version,"1"
+    \ 000000                      .rtmodel codeModel,"large"
+    \ 000000                      .rtmodel dataModel,"small"
+    \ 000000                      .rtmodel core,"65816"
+    \ 000000                      .rtmodel huge,"0"
+    \ 000000                      .rtmodel target,"none-specified"
+    \ 000000                      .extern _Dp
+    \ 000000                      .extern _Vfp
+0001                  #include "../include/calypsi_intellisense_fix.h"
+0002                  #include <calypsi/intrinsics65816.h>
+0003                  
+0004                  #define SYSCALL_PARAMS_START (*(volatile unsigned char*)0x0F00)
+0005                  #define SYSCALL_PARAMS_RESULT (*(volatile unsigned char*)0x0FFE)
+0006                  
+0007                  #define W 320
+0008                  #define H 240
+0009                  
+0010                  static const char hex_digits[] = "0123456789ABCDEF";
+    \ 000000                      .section cdata,rodata
+    \ 000000 30313233 hex_digits: .byte   48,49,50,51,52,53,54,55
+    \ 000004 34353637
+    \ 000008 38394142             .byte   56,57,65,66,67,68,69,70
+    \ 00000c 43444546
+    \ 000010 00                   .byte   0
+0011                  
+0012                  // Colors       3-bit Red, 3-bit Green, 2-bit Blue
+0013                  #define RGB332_BLACK        0x00    // 000 000 00
+0014                  #define RGB332_WHITE        0xFF    // 111 111 11
+0015                  #define RGB332_RED          0xE0    // 111 000 00
+0016                  #define RGB332_GREEN        0x1C    // 000 111 00
+0017                  #define RGB332_BLUE         0x03    // 000 000 11
+0018                  #define RGB332_CYAN         0x1F    // 000 111 11
+0019                  #define RGB332_MAGENTA      0xE3    // 111 000 11
+0020                  #define RGB332_YELLOW       0xFC    // 111 111 00
+0021                  #define RGB332_ORANGE       0xF0    // 111 100 00
+0022                  #define RGB332_PURPLE       0x83    // 100 000 11
+0023                  #define RGB332_BROWN        0xA4    // 101 001 00
+0024                  #define RGB332_PINK         0xE7    // 111 001 11
+0025                  #define RGB332_GRAY         0x92    // 100 100 10
+0026                  #define RGB332_DARK_GRAY    0x49    // 010 010 01
+0027                  #define RGB332_LIGHT_GRAY   0xDB    // 110 110 11
+0028                  
+0029                  typedef struct {
+0030                      unsigned char param0;
+0031                      unsigned char param1;
+0032                      unsigned char param2;
+0033                      unsigned char param3;
+0034                      unsigned char param4;
+0035                      unsigned char param5;
+0036                      unsigned char param6;
+0037                      unsigned char param7;
+0038                      unsigned char param8;
+0039                      unsigned char param9;
+0040                      unsigned char param10;
+0041                      unsigned char param11;
+0042                  } syscall_params_t;
+0043                  
+0044                  #define SYSCALL_PARAMS (*(volatile syscall_params_t*)0x0F00)
+0045                  
+0046                  
+0047                  // static inline unsigned short rgb332(unsigned char r, unsigned char g, unsigned char b)
+0048                  // {
+0049                  //     // RRRGGGBB
+0050                  //     // Red:   Take top 3 bits (7,6,5), keep them at 7,6,5
+0051                  //     // Green: Take top 3 bits (7,6,5), shift right 3 to positions 4,3,2
+0052                  //     // Blue:  Take top 2 bits (7,6),   shift right 6 to positions 1,0
+0053                      
+0054                  //     unsigned short r_part = (unsigned short)(r & 0xE0);
+0055                  //     unsigned short g_part = (unsigned short)(g & 0xE0) >> 3;
+0056                  //     unsigned short b_part = (unsigned short)(b & 0xC0) >> 6;
+0057                  
+0058                  //     return (unsigned short)(r_part | g_part | b_part);
+0059                  // }
+0060                  
+0061                  // static inline unsigned short rainbow332(unsigned char v)
+0062                  // {
+0063                  //     // high 3 bits choose a base hue (0–7)
+0064                  //     unsigned char band = v >> 5;        // 0..7
+0065                  //     unsigned char level = v & 0x1F;     // 0..31
+0066                  
+0067                  //     // scale level up to 0..255
+0068                  //     unsigned char l = (unsigned char)(level << 3);
+0069                  
+0070                  //     unsigned char r = 0, g = 0, b = 0;
+0071                  
+0072                  //     switch (band) {
+0073                  //         case 0: r = l;         g = 0;         b = 0;         break; // red
+0074                  //         case 1: r = l;         g = l >> 1;    b = 0;         break; // orange
+0075                  //         case 2: r = l;         g = l;         b = 0;         break; // yellow
+0076                  //         case 3: r = 0;         g = l;         b = 0;         break; // green
+0077                  //         case 4: r = 0;         g = l;         b = l;         break; // cyan
+0078                  //         case 5: r = 0;         g = 0;         b = l;         break; // blue
+0079                  //         case 6: r = l >> 1;    g = 0;         b = l;         break; // purple
+0080                  //         default:r = l;         g = 0;         b = l;         break; // magenta
+0081                  //     }
+0082                  
+0083                  //     return rgb332(r, g, b);
+0084                  // }
+0085                  
+0086                  static inline void os_cApp_return(void)
+0087                  {
+    \ 000000                      .section farcode,text
+    \ 000000          os_cApp_return:
+0088                      //to do: any cleanup needed before returning to '265?
+0089                      __asm(" cop #0x0F\n");   // COP #15
+    \ 000000 020f                 cop     #15
+0090                  }
+    \ 000002 6b                   rtl
+0091                  
+0092                  static inline void os_print_char(char c)
+0093                  {
+    \ 000000                      .section farcode,text
+    \ 000000          os_print_char:
+0094                      SYSCALL_PARAMS_START = c;   // store to $0F00 in C
+    \ 000000 e220                 sep     #32
+    \ 000002 8d000f               sta     0xf00
+    \ 000005 c220                 rep     #32
+0095                      __asm(" cop #0x01\n");   // COP #1
+    \ 000007 0201                 cop     #1
+0096                  }
+    \ 000009 6b                   rtl
+0097                  
+0098                  static inline void os_newline(void)
+0099                  {
+0100                      __asm(" cop #2\n");   // COP #2
+0101                  }
+0102                  
+0103                  static inline void os_debug_mark(void)
+0104                  {
+    \ 000000                      .section farcode,text
+    \ 000000          os_debug_mark:
+0105                      __asm(" cop #3\n");   // COP #3
+    \ 000000 0203                 cop     #3
+0106                  }
+    \ 000002 6b                   rtl
+0107                  
+0108                  static inline void os_debug_mark2(void)
+0109                  {
+    \ 000000                      .section farcode,text
+    \ 000000          os_debug_mark2:
+0110                      __asm(" cop #4\n");   // COP #3
+    \ 000000 0204                 cop     #4
+0111                  }
+    \ 000002 6b                   rtl
+0112                  
+0113                  static inline void os_puts(const char* s)
+0114                  {
+    \ 000000                      .section farcode,text
+    \ 000000 5a       os_puts:    phy
+    \ 000001 5a                   phy
+0115                      while (*s) {
+    \ 000002 aa                   tax
+    \ 000003 e220     `?L19`:     sep     #32
+    \ 000005 bd0000               lda     0,x
+    \ 000008 c220                 rep     #32
+    \ 00000a f018                 beq     `?L20`
+0116                          os_print_char(*s++);
+    \ 00000c e220                 sep     #32
+    \ 00000e bd0000               lda     0,x
+    \ 000011 8301                 sta     1,s
+    \ 000013 c220                 rep     #32
+    \ 000015 8a                   txa
+    \ 000016 1a                   inc     a
+    \ 000017 8302                 sta     2,s
+    \ 000019 a301                 lda     1,s
+    \ 00001b 22......             jsl     long:os_print_char
+    \ 00001f a302                 lda     2,s
+    \ 000021 aa                   tax
+    \ 000022 80df                 bra     `?L19`
+    \ 000024          `?L20`:
+0117                      }
+0118                  }
+    \ 000024 7a                   ply
+    \ 000025 7a                   ply
+    \ 000026 6b                   rtl
+0119                  
+0120                  // static inline void os_draw_rectangle(unsigned short x, unsigned short y, unsigned short width, 
+0121                  //                                     unsigned short height, unsigned short color, unsigned char filled)
+0122                  // {
+0123                      
+0124                  //     // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0125                  //     //                                  width_lo, width_hi, height_lo, height_hi, 
+0126                  //     //                                  color_lo, color_hi, filled
+0127                  //     // COP_CMD_DRAW_RECTANGLE      .equ  $06
+0128                  
+0129                  //     SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+0130                  //     SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+0131                  //     SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+0132                  //     SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+0133                  //     SYSCALL_PARAMS.param4  = (unsigned char)(width & 0xFF);
+0134                  //     SYSCALL_PARAMS.param5  = (unsigned char)(width >> 8);
+0135                  //     SYSCALL_PARAMS.param6  = (unsigned char)(height & 0xFF);
+0136                  //     SYSCALL_PARAMS.param7  = (unsigned char)(height >> 8);
+0137                  //     SYSCALL_PARAMS.param8  = (unsigned char)(color & 0xFF);
+0138                  //     SYSCALL_PARAMS.param9  = (unsigned char)(color >> 8);
+0139                  //     SYSCALL_PARAMS.param10 = filled;
+0140                  
+0141                  //     __asm(" cop #6\n");   // COP #6
+0142                  // }
+0143                  
+0144                  static void delay(long counts) {
+0145                      volatile long i;
+0146                      volatile long j;
+0147                  
+0148                      for (i = 0; i < counts; i++) {
+0149                          for (j = 0; j < 100; j++) {
+0150                              // volatile ensures the compiler doesn't 
+0151                              // delete this "useless" loop.
+0152                          }
+0153                      }
+0154                  }
+0155                  
+0156                  static void delayms(unsigned short ms) {
+0157                      volatile unsigned short i;
+0158                      volatile unsigned short j;
+0159                  
+0160                      for (i = 0; i < ms; i++) {
+0161                          for (j = 0; j < 588; j++) {
+0162                              // Approximately 1ms per 'i' iteration at 10MHz
+0163                          }
+0164                      }
+0165                  }
+0166                  
+0167                  // static const unsigned short rehsd_raw_565[1024] = {
+0168                  //     0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0020,0x18E3,0x2124,0x2985,0x3186,0x31A6,0x31A6,0x3186,0x2965,0x2124,0x18C3,0x0841,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,
+0169                  //     0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0841,0x2104,0x39E7,0x4248,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4248,0x39E7,0x2104,0x0841,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,
+0170                  //     0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0841,0x2104,0x39E7,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x52AA,0x4A69,0x4A69,0x4A69,0x39E7,0x18E3,0x0861,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,
+0171                  //     0x0000,0x0000,0x0000,0x0000,0x0000,0x0841,0x2965,0x4A49,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x738E,0xD6BA,0x4A69,0x4A69,0x4A69,0x4A69,0x4A49,0x2965,0x0020,0x0000,0x0000,0x0000,0x0000,0x0000,
+0172                  //     0x0000,0x0000,0x0000,0x0000,0x1082,0x31A6,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x73AE,0xE73C,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x31A6,0x0861,0x0000,0x0000,0x0000,0x0000,
+0173                  //     0x0000,0x0000,0x0000,0x0841,0x31A6,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x73AE,0xE73C,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x31A6,0x0020,0x0000,0x0000,0x0000,
+0174                  //     0x0000,0x0000,0x0841,0x2985,0x4A69,0x4A69,0x52CA,0x528A,0x4A69,0x5ACB,0x528A,0x4A69,0x4A69,0x6B6D,0x7BEF,0x5ACB,0x4A69,0x4A69,0x73AE,0xE73C,0x528A,0x6B6D,0x73CE,0x528A,0x4A69,0x4A69,0x4A69,0x4A69,0x2965,0x0000,0x0000,0x0000,
+0175                  //     0x0000,0x0000,0x2104,0x4A49,0x4A69,0x4A69,0xC658,0x9492,0xBE17,0xEF9D,0x94B2,0x4A69,0xB5D6,0xF7DE,0xF7DE,0xE75C,0x630C,0x4A69,0x73AE,0xE75C,0xBDF7,0xF7DE,0xFFFF,0xBDF7,0x4A69,0x4A69,0x4A69,0x4A69,0x4248,0x18C3,0x0000,0x0000,
+0176                  //     0x0000,0x0841,0x39E7,0x4A69,0x4A69,0x4A69,0xCE59,0xEF7D,0xDEFB,0xB5D6,0x8410,0x8430,0xE75C,0x6B6D,0x52AA,0xBE17,0xBDF7,0x4A69,0x73AE,0xF7DE,0xD6BA,0x7BEF,0xA534,0xEF9D,0x630C,0x4A69,0x4A69,0x4A69,0x4A69,0x39E7,0x0841,0x0000,
+0177                  //     0x0000,0x2104,0x4A69,0x4A69,0x4A69,0x4A69,0xCE59,0xBDF7,0x4A89,0x4A69,0x4A69,0xC638,0x94B2,0x4A69,0x4A69,0x6B6D,0xEF7D,0x4A69,0x73AE,0xE75C,0x52AA,0x4A69,0x4A69,0xEF9D,0x738E,0x4A69,0x4A69,0x4A69,0x4A69,0x4A49,0x2124,0x0000,
+0178                  //     0x0020,0x39E7,0x4A69,0x4A69,0x4A69,0x4A69,0xCE59,0x8C71,0x4A69,0x4A69,0x528A,0xDF1B,0x8430,0x738E,0x738E,0x8410,0xF7BE,0x528A,0x73AE,0xE73C,0x4A69,0x4A69,0x4A69,0xDF1B,0x7BCF,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x39C7,0x1082,
+0179                  //     0x18E3,0x4248,0x4A69,0x4A69,0x4A69,0x4A69,0xCE59,0x8C71,0x4A69,0x4A69,0x52AA,0xEF7D,0xEF9D,0xEF9D,0xEF9D,0xEF9D,0xEF9D,0x52AA,0x73AE,0xE73C,0x4A69,0x4A69,0x4A69,0xDEFB,0x7BCF,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4228,0x1082,
+0180                  //     0x2124,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0xCE59,0x8C71,0x4A69,0x4A69,0x52AA,0xE75C,0x632C,0x528A,0x528A,0x528A,0x528A,0x4A69,0x73AE,0xE73C,0x4A69,0x4A69,0x4A69,0xDEFB,0x7BCF,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x18C3,
+0181                  //     0x2985,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0xCE59,0x8C71,0x4A69,0x4A69,0x4A89,0xDEFB,0x7C0F,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x73AE,0xE73C,0x4A69,0x632C,0x528A,0xDEFB,0x7BCF,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x2965,
+0182                  //     0x31A6,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0xCE59,0x8C71,0x4A69,0x4A69,0x4A69,0xB5D6,0xCE79,0x4A69,0x4A69,0x4A69,0x73AE,0x4A69,0x73AE,0xE73C,0x4A69,0xDF1B,0x6B6D,0xDEFB,0x7BCF,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x3186,
+0183                  //     0x31A6,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0xCE59,0x8C71,0x4A69,0x4A69,0x4A69,0x6B6D,0xF7BE,0xC658,0x9CF3,0xBE17,0xEF7D,0x4A69,0x73AE,0xE73C,0x4A69,0xE73C,0x6B8D,0xDEFB,0x7BCF,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x31A6,
+0184                  //     0x31A6,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0xAD95,0x7BEF,0x4A69,0x4A69,0x4A69,0x4A69,0x7BCF,0xDF1B,0xF7DE,0xDF1B,0x8C71,0x4A69,0x6B6D,0xC638,0x4A69,0xE73C,0x6B8D,0xBDF7,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x31A6,
+0185                  //     0x3186,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x6B4D,0x94D2,0x8C71,0x5B0B,0x4A69,0x4A69,0x4A69,0x7BEF,0x9CF3,0x73AE,0xE73C,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x3186,
+0186                  //     0x2965,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x7BCF,0xF7BE,0xEF9D,0xF7DE,0xEF9D,0x528A,0x4A69,0x94B2,0xF7DE,0xF7DE,0xF7DE,0xF7DE,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x2965,
+0187                  //     0x2124,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0xD6BA,0xA554,0x4A69,0x5AEB,0xBDD7,0x528A,0x52AA,0xEF7D,0x9CF3,0x4A69,0x6B6D,0xEF9D,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x18C3,
+0188                  //     0x18C3,0x4248,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0xEF9D,0x7BCF,0x4A69,0x4A69,0x4A69,0x4A69,0x8410,0xDF1B,0x4A89,0x4A69,0x4A69,0xE73C,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4228,0x1082,
+0189                  //     0x0841,0x39E7,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0xD6BA,0xD69A,0x6B8D,0x52AA,0x4A69,0x4A69,0xA534,0xBE17,0x4A69,0x4A69,0x4A69,0xE73C,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x31C6,0x0000,
+0190                  //     0x0000,0x2104,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x7BCF,0xEF9D,0xF7DE,0xE73C,0x8C51,0x4A69,0xB596,0xB5B6,0x4A69,0x4A69,0x4A69,0xE73C,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A49,0x2104,0x0000,
+0191                  //     0x0000,0x0020,0x39E7,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x5ACB,0x94D2,0xD6DA,0xF7BE,0x5AEB,0xAD75,0xBDF7,0x4A69,0x4A69,0x4A69,0xE73C,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x39E7,0x0020,0x0000,
+0192                  //     0x0000,0x0000,0x18E3,0x4A49,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x52CA,0xEF9D,0x73CE,0x9CD3,0xCE79,0x4A69,0x4A69,0x4A69,0xE73C,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4248,0x18C3,0x0000,0x0000,
+0193                  //     0x0000,0x0000,0x0861,0x2965,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A89,0x9CF3,0x4A89,0x4A69,0x5ACB,0xEF9D,0x6B8D,0x73AE,0xEF7D,0x5B0B,0x4A69,0x73AE,0xF7BE,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x4A49,0x2965,0x0000,0x0000,0x0000,
+0194                  //     0x0000,0x0000,0x0000,0x0020,0x31A6,0x4A69,0x4A69,0x4A69,0x4A69,0x4A89,0xF7BE,0xDEFB,0xB5D6,0xD6DA,0xD6DA,0x4A69,0x4A69,0xDEFB,0xE75C,0xD6BA,0xEF9D,0xF7BE,0x6B8D,0x4A69,0x4A69,0x4A69,0x4A69,0x3186,0x0020,0x0000,0x0000,0x0000,
+0195                  //     0x0000,0x0000,0x0000,0x0000,0x0861,0x31A6,0x4A69,0x4A69,0x4A69,0x4A69,0x73CE,0xC658,0xDF1B,0xBDF7,0x5ACB,0x4A69,0x4A69,0x6B4D,0xD6BA,0xD6DA,0x73AE,0xAD55,0x630C,0x4A69,0x4A69,0x4A49,0x3186,0x0861,0x0000,0x0000,0x0000,0x0000,
+0196                  //     0x0000,0x0000,0x0000,0x0000,0x0000,0x0020,0x2965,0x4248,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4248,0x2965,0x0020,0x0000,0x0000,0x0000,0x0000,0x0000,
+0197                  //     0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x18C3,0x39E7,0x4A49,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A49,0x39E7,0x18C3,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,
+0198                  //     0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0841,0x2104,0x39C7,0x4228,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4A69,0x4228,0x31C6,0x2104,0x0020,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,
+0199                  //     0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x1082,0x18C3,0x2965,0x3186,0x31A6,0x31A6,0x3186,0x2965,0x18C3,0x1082,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000
+0200                  // };
+0201                  
+0202                  // void draw_logo_32_scaled_4x(short centerX, short centerY)
+0203                  // {
+0204                  //     short startX = centerX - 64; 
+0205                  //     short startY = centerY - 64;
+0206                  //     unsigned short i = 0;
+0207                  
+0208                  //     for (unsigned char y = 0; y < 32; y++) {
+0209                  //         for (unsigned char x = 0; x < 32; x++) {
+0210                  //             unsigned short c565 = rehsd_raw_565[i++];
+0211                              
+0212                  //             if (c565 != 0x0000) {
+0213                  //                 // Convert 16-bit 565 to 8-bit 332
+0214                  //                 // Red:   ((c >> 11) & 0x1F) -> scale to 3 bits
+0215                  //                 // Green: ((c >> 5) & 0x3F)  -> scale to 3 bits
+0216                  //                 // Blue:  (c & 0x1F)         -> scale to 2 bits
+0217                  //                 unsigned char r = (unsigned char)((c565 >> 13) & 0x07);
+0218                  //                 unsigned char g = (unsigned char)((c565 >> 8) & 0x07);
+0219                  //                 unsigned char b = (unsigned char)((c565 >> 3) & 0x03);
+0220                  //                 unsigned char c332 = (unsigned char)((r << 5) | (g << 2) | b);
+0221                  
+0222                  //                 os_draw_rectangle(
+0223                  //                     (unsigned short)(startX + (x << 2)), 
+0224                  //                     (unsigned short)(startY + (y << 2)), 
+0225                  //                     4, 4, 
+0226                  //                     c332, 1
+0227                  //                 );
+0228                  //             }
+0229                  //         }
+0230                  //         // One delay per row to keep the bus happy
+0231                  //         delay(3); 
+0232                  //     }
+0233                  // }
+0234                  
+0235                  // void draw_logo_32_scaled_2x(short centerX, short centerY)
+0236                  // {
+0237                  //     short startX = centerX - 32; 
+0238                  //     short startY = centerY - 32;
+0239                  //     unsigned short i = 0;
+0240                  
+0241                  //     for (unsigned char y = 0; y < 32; y++) {
+0242                  //         for (unsigned char x = 0; x < 32; x++) {
+0243                  //             unsigned short c565 = rehsd_raw_565[i++];
+0244                              
+0245                  //             if (c565 != 0x0000) {
+0246                  //                 // Convert 16-bit 565 to 8-bit 332
+0247                  //                 // Matches your specific bit-extraction logic
+0248                  //                 unsigned char r = (unsigned char)((c565 >> 13) & 0x07);
+0249                  //                 unsigned char g = (unsigned char)((c565 >> 8) & 0x07);
+0250                  //                 unsigned char b = (unsigned char)((c565 >> 3) & 0x03);
+0251                  //                 unsigned char c332 = (unsigned char)((r << 5) | (g << 2) | b);
+0252                  
+0253                  //                 os_draw_rectangle(
+0254                  //                     (unsigned short)(startX + (x << 1)), 
+0255                  //                     (unsigned short)(startY + (y << 1)), 
+0256                  //                     2, 2, 
+0257                  //                     c332, 1
+0258                  //                 );
+0259                  //             }
+0260                  //         }
+0261                  //         // Keep the bus happy with a row delay
+0262                  //         delay(3); 
+0263                  //     }
+0264                  // }
+0265                  
+0266                  // void gfxFrame1(unsigned char BLOCK)
+0267                  // {
+0268                  //     for (unsigned short y = 0; y < H; y += BLOCK) {
+0269                  //         unsigned short h = (y + BLOCK > H) ? (H - y) : BLOCK;
+0270                  
+0271                  //         for (unsigned short x = 0; x < W; x += BLOCK) {
+0272                  //             unsigned short w = (x + BLOCK > W) ? (W - x) : BLOCK;
+0273                  
+0274                  //             unsigned char v =
+0275                  //                 (unsigned char)(((unsigned int)x + (unsigned int)y) & 0xFF);
+0276                  
+0277                  //             unsigned short c = rainbow332(v);
+0278                  
+0279                  //             os_draw_rectangle(x, y, w, h, c, 1);
+0280                  //         }
+0281                          
+0282                  //         delay(3);
+0283                  //     }
+0284                  // }
+0285                  
+0286                  // void simpleRectangles()
+0287                  // {
+0288                  //     os_draw_rectangle(100,40,100,10,RGB332_BLACK,1);
+0289                  //     os_draw_rectangle(100,50,100,10,RGB332_WHITE,1);    
+0290                  //     os_draw_rectangle(100,60,100,10,RGB332_RED,1);
+0291                  //     os_draw_rectangle(100,70,100,10,RGB332_GREEN,1);
+0292                  //     os_draw_rectangle(100,80,100,10,RGB332_BLUE,1);
+0293                  //     os_draw_rectangle(100,90,100,10,RGB332_CYAN,1);
+0294                  //     os_draw_rectangle(100,100,100,10,RGB332_MAGENTA,1);
+0295                  //     os_draw_rectangle(100,110,100,10,RGB332_YELLOW,1);
+0296                  //     os_draw_rectangle(100,120,100,10,RGB332_ORANGE,1);
+0297                  //     os_draw_rectangle(100,130,100,10,RGB332_PURPLE,1);
+0298                  //     os_draw_rectangle(100,140,100,10,RGB332_BROWN,1);
+0299                  //     os_draw_rectangle(100,150,100,10,RGB332_PINK,1);
+0300                  //     os_draw_rectangle(100,160,100,10,RGB332_GRAY,1);
+0301                  //     os_draw_rectangle(100,170,100,10,RGB332_DARK_GRAY,1);
+0302                  //     os_draw_rectangle(100,180,100,10,RGB332_LIGHT_GRAY,1);
+0303                  // }
+0304                  
+0305                  // void horizontalDot()
+0306                  // {
+0307                  //     os_draw_rectangle(0,200,5,5,RGB332_RED,1);
+0308                  //     for (unsigned short x = 0; x <= 320; x += 1) {
+0309                  //         delayms(5);
+0310                  //         os_draw_rectangle(x + 5, 200, 1, 5, RGB332_RED, 1);
+0311                  //         delayms(5);
+0312                  //         os_draw_rectangle(x, 200, 1, 5, RGB332_BLACK, 1);
+0313                  //     }
+0314                  // }
+0315                  
+0316                  // void diagonalColors()
+0317                  // {
+0318                  //     gfxFrame1(8);
+0319                  //     gfxFrame1(4);
+0320                  //     //gfxFrame1(2);     
+0321                  //     //gfxFrame1(1);     need more power, captain
+0322                  // }
+0323                  
+0324                  // void opening_window(unsigned char t)
+0325                  // {
+0326                  //     short centerX = 160;
+0327                  //     short centerY = 120;
+0328                  
+0329                  //     // 1. Calculate the Expanding Black Window bounds
+0330                  //     unsigned char size_step = (t % 18); 
+0331                  //     short w = (short)((size_step + 1) * 16);
+0332                  //     short h = (short)((size_step + 1) * 12);
+0333                  //     short x = centerX - (w >> 1);
+0334                  //     short y = centerY - (h >> 1);
+0335                  
+0336                  //     // 2. Draw the Black Window
+0337                  //     if (w <= 288 && h <= 216) {
+0338                  //         os_draw_rectangle((unsigned short)x, (unsigned short)y, (unsigned short)w, (unsigned short)h, 0x00, 1);
+0339                  //     }
+0340                     
+0341                  // }
+0342                  
+0343                  // void graphics_test()
+0344                  // {
+0345                  //     simpleRectangles();
+0346                  //     delayms(10);
+0347                  
+0348                  //     horizontalDot();
+0349                  //     delayms(50);
+0350                  
+0351                  //     diagonalColors();
+0352                  //     delayms(50);
+0353                  
+0354                      
+0355                  //     unsigned char t = 0;
+0356                  //     while (t < 18) {
+0357                  //         opening_window(t++);
+0358                  //     }
+0359                  //     delayms(50);
+0360                  
+0361                  //     draw_logo_32_scaled_4x(160, 120);
+0362                  //     delayms(50);
+0363                  // }
+0364                  
+0365                  void print_hex(unsigned char val)
+0366                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_hex
+    \ 000000 5a       print_hex:  phy
+    \ 000001 e220                 sep     #32
+    \ 000003 8302                 sta     2,s
+    \ 000005 c220                 rep     #32
+0367                      unsigned char high = (val >> 4) & 0x0F;
+    \ 000007 a302                 lda     2,s
+    \ 000009 e220                 sep     #32
+    \ 00000b 4a                   lsr     a
+    \ 00000c 4a                   lsr     a
+    \ 00000d 4a                   lsr     a
+    \ 00000e 4a                   lsr     a
+    \ 00000f c220                 rep     #32
+    \ 000011 290f00               and     ##15
+    \ 000014 e220                 sep     #32
+    \ 000016 8301                 sta     1,s
+    \ 000018 c220                 rep     #32
+0368                      unsigned char low = val & 0x0F;
+    \ 00001a e220                 sep     #32
+    \ 00001c a90f                 lda     #15
+    \ 00001e 2302                 and     2,s
+    \ 000020 8302                 sta     2,s
+    \ 000022 c220                 rep     #32
+0369                      os_print_char(hex_digits[high]);
+    \ 000024 a301                 lda     1,s
+    \ 000026 29ff00               and     ##255
+    \ 000029 aa                   tax
+    \ 00002a bd....               lda     hex_digits,x
+    \ 00002d 22......             jsl     long:os_print_char
+0370                      os_print_char(hex_digits[low]);
+    \ 000031 a302                 lda     2,s
+    \ 000033 29ff00               and     ##255
+    \ 000036 aa                   tax
+    \ 000037 bd....               lda     hex_digits,x
+    \ 00003a 22......             jsl     long:os_print_char
+0371                  }
+    \ 00003e 7a                   ply
+    \ 00003f 6b                   rtl
+0372                  
+0373                  void print_hex32(unsigned long val)
+0374                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_hex32
+    \ 000000          print_hex32:
+    \ 000000 d4..                 pei     dp:.tiny (_Dp+8)
+    \ 000002 d4..                 pei     dp:.tiny (_Dp+10)
+    \ 000004 5a                   phy
+    \ 000005 5a                   phy
+    \ 000006 86..                 stx     dp:.tiny (_Dp+10)
+    \ 000008 85..                 sta     dp:.tiny (_Dp+8)
+0375                      for (int shift = 28; shift >= 0; shift -= 4) {
+    \ 00000a a91c00               lda     ##28
+    \ 00000d 8301                 sta     1,s
+    \ 00000f a301                 lda     1,s
+    \ 000011 8303                 sta     3,s
+    \ 000013 a303     `?L51`:     lda     3,s
+    \ 000015 1009                 bpl     `?L50`
+0376                          unsigned char nib = (val >> shift) & 0x0F;
+0377                          os_print_char(hex_digits[nib]);
+0378                      }
+0379                  }
+    \ 000017 7a                   ply
+    \ 000018 7a                   ply
+    \ 000019 7a                   ply
+    \ 00001a 84..                 sty     dp:.tiny (_Dp+10)
+    \ 00001c 7a                   ply
+    \ 00001d 84..                 sty     dp:.tiny (_Dp+8)
+    \ 00001f 6b                   rtl
+    \ 000020          `?L50`:
+    \ 000020 a6..                 ldx     dp:.tiny (_Dp+10)
+    \ 000022 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000024 da                   phx
+    \ 000025 48                   pha
+    \ 000026 a307                 lda     7,s
+    \ 000028 a8                   tay
+    \ 000029 68                   pla
+    \ 00002a fa                   plx
+    \ 00002b 86..                 stx     dp:.tiny _Dp
+    \ 00002d c8                   iny
+    \ 00002e 88                   dey
+    \ 00002f f006                 beq     `?L60`
+    \ 000031          `?L61`:
+    \ 000031 46..                 lsr     dp:.tiny _Dp
+    \ 000033 6a                   ror     a
+    \ 000034 88                   dey
+    \ 000035 d0fa                 bne     `?L61`
+    \ 000037          `?L60`:
+    \ 000037 a6..                 ldx     dp:.tiny _Dp
+    \ 000039 86..                 stx     dp:.tiny (_Dp+2)
+    \ 00003b 85..                 sta     dp:.tiny _Dp
+    \ 00003d a5..                 lda     dp:.tiny (_Dp+2)
+    \ 00003f a90000               lda     ##0
+    \ 000042 aa                   tax
+    \ 000043 a5..                 lda     dp:.tiny _Dp
+    \ 000045 290f00               and     ##15
+    \ 000048 e220                 sep     #32
+    \ 00004a 8301                 sta     1,s
+    \ 00004c c220                 rep     #32
+    \ 00004e a301                 lda     1,s
+    \ 000050 29ff00               and     ##255
+    \ 000053 aa                   tax
+    \ 000054 bd....               lda     hex_digits,x
+    \ 000057 22......             jsl     long:os_print_char
+    \ 00005b a303                 lda     3,s
+    \ 00005d 38                   sec
+    \ 00005e e90400               sbc     ##4
+    \ 000061 8301                 sta     1,s
+    \ 000063 a301                 lda     1,s
+    \ 000065 8303                 sta     3,s
+    \ 000067 80aa                 bra     `?L51`
+0380                  
+0381                  
+0382                  //static const __far char *msg = "gfxTest main()";
+0383                  void main(void)
+0384                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public main
+    \ 000000          main:
+0385                      //os_newline();
+0386                      os_debug_mark();
+    \ 000000 22......             jsl     long:os_debug_mark
+0387                      os_puts("gfxTest!");
+    \ 000004 a9....               lda     ##`_StringLiteral_gfxTest!`
+    \ 000007 22......             jsl     long:os_puts
+0388                      //os_newline();
+0389                      os_debug_mark2();
+    \ 00000b 22......             jsl     long:os_debug_mark2
+0390                      //os_newline();
+0391                      
+0392                      // graphics_test();
+0393                  
+0394                      os_cApp_return();
+    \ 00000f 22......             jsl     long:os_cApp_return
+0395                  }
+    \ 000013 6b                   rtl
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_gfxTest!`
+    \ 000000          `_StringLiteral_gfxTest!`:
+    \ 000000 67667854             .byte   103,102,120,84,101,115,116,33,0
+    \ 000004 65737421
+    \ 000008 00
+
+##########################
+#                        #
+# Memory sizes (decimal) #
+#                        #
+##########################
+
+Executable  (Text): 247 bytes
+Constant          :  26 bytes
