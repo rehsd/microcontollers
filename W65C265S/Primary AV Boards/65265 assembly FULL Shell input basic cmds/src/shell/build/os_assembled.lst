@@ -1,0 +1,294 @@
+###############################################################################
+#                                                                             #
+# Calypsi ISO C compiler for 65816                               version 5.15 #
+#                                                       02/Apr/2026  23:41:37 #
+# Command line: --code-model=large --data-model=small -c os.c -o build/os.o   #
+#               --list-file=build/os_assembled.lst                            #
+#                                                                             #
+###############################################################################
+
+    \ 000000                      .rtmodel version,"1"
+    \ 000000                      .rtmodel codeModel,"large"
+    \ 000000                      .rtmodel dataModel,"small"
+    \ 000000                      .rtmodel core,"65816"
+    \ 000000                      .rtmodel huge,"0"
+    \ 000000                      .rtmodel target,"none-specified"
+    \ 000000                      .extern _Dp
+    \ 000000                      .extern _Vfp
+0001                  #include "os.h"
+0002                  
+0003                  
+0004                  
+0005                  void os_draw_rectangle(unsigned short x, unsigned short y, unsigned short width, 
+0006                                                      unsigned short height, unsigned short color, unsigned char filled)
+0007                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_draw_rectangle
+    \ 000000          os_draw_rectangle:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 aa                   tax
+    \ 000003 a5..                 lda     dp:.tiny _Dp
+    \ 000005 8301                 sta     1,s
+    \ 000007 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000009 8303                 sta     3,s
+0008                      
+0009                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0010                      //                                  width_lo, width_hi, height_lo, height_hi, 
+0011                      //                                  color_lo, color_hi, filled
+0012                      // COP_CMD_DRAW_RECTANGLE      .equ  $06
+0013                  
+0014                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 00000b 8a                   txa
+    \ 00000c e220                 sep     #32
+    \ 00000e 8d000f               sta     0xf00
+    \ 000011 c220                 rep     #32
+0015                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 000013 8a                   txa
+    \ 000014 eb                   xba
+    \ 000015 29ff00               and     ##255
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d010f               sta     0xf01
+    \ 00001d c220                 rep     #32
+0016                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8d020f               sta     0xf02
+    \ 000026 c220                 rep     #32
+0017                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 000028 e220                 sep     #32
+    \ 00002a a302                 lda     2,s
+    \ 00002c 8d030f               sta     0xf03
+    \ 00002f c220                 rep     #32
+0018                      SYSCALL_PARAMS.param4  = (unsigned char)(width & 0xFF);
+    \ 000031 e220                 sep     #32
+    \ 000033 a303                 lda     3,s
+    \ 000035 8d040f               sta     0xf04
+    \ 000038 c220                 rep     #32
+0019                      SYSCALL_PARAMS.param5  = (unsigned char)(width >> 8);
+    \ 00003a e220                 sep     #32
+    \ 00003c a304                 lda     4,s
+    \ 00003e 8d050f               sta     0xf05
+    \ 000041 c220                 rep     #32
+0020                      SYSCALL_PARAMS.param6  = (unsigned char)(height & 0xFF);
+    \ 000043 e220                 sep     #32
+    \ 000045 a308                 lda     8,s
+    \ 000047 8d060f               sta     0xf06
+    \ 00004a c220                 rep     #32
+0021                      SYSCALL_PARAMS.param7  = (unsigned char)(height >> 8);
+    \ 00004c e220                 sep     #32
+    \ 00004e a309                 lda     9,s
+    \ 000050 8d070f               sta     0xf07
+    \ 000053 c220                 rep     #32
+0022                      SYSCALL_PARAMS.param8  = (unsigned char)(color & 0xFF);
+    \ 000055 e220                 sep     #32
+    \ 000057 a30a                 lda     10,s
+    \ 000059 8d080f               sta     0xf08
+    \ 00005c c220                 rep     #32
+0023                      SYSCALL_PARAMS.param9  = (unsigned char)(color >> 8);
+    \ 00005e e220                 sep     #32
+    \ 000060 a30b                 lda     11,s
+    \ 000062 8d090f               sta     0xf09
+    \ 000065 c220                 rep     #32
+0024                      SYSCALL_PARAMS.param10 = filled;
+    \ 000067 e220                 sep     #32
+    \ 000069 a30c                 lda     12,s
+    \ 00006b 8d0a0f               sta     0xf0a
+    \ 00006e c220                 rep     #32
+0025                  
+0026                      __asm(" cop #6\n");   // COP #6
+    \ 000070 0206                 cop     #6
+0027                  }
+    \ 000072 7a                   ply
+    \ 000073 7a                   ply
+    \ 000074 6b                   rtl
+0028                  
+0029                  void os_print_char(char c)
+0030                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_print_char
+    \ 000000          os_print_char:
+0031                      SYSCALL_PARAMS_START = c;   // store to $0F00 in C
+    \ 000000 e220                 sep     #32
+    \ 000002 8d000f               sta     0xf00
+    \ 000005 c220                 rep     #32
+0032                      __asm(" cop #1\n");   // COP #1
+    \ 000007 0201                 cop     #1
+0033                  }
+    \ 000009 6b                   rtl
+0034                  
+0035                  void os_newline(void)
+0036                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_newline
+    \ 000000          os_newline:
+0037                      __asm(" cop #2\n");   // COP #2
+    \ 000000 0202                 cop     #2
+0038                  }
+    \ 000002 6b                   rtl
+0039                  
+0040                  void os_newline_with_prompt(void)
+0041                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_newline_with_prompt
+    \ 000000          os_newline_with_prompt:
+0042                      __asm(" cop #2\n");   // COP #2
+    \ 000000 0202                 cop     #2
+0043                      os_print_char('$');
+    \ 000002 a92400               lda     ##36
+    \ 000005 22......             jsl     long:os_print_char
+0044                  }
+    \ 000009 6b                   rtl
+0045                  
+0046                  void os_debug_mark(void)
+0047                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_debug_mark
+    \ 000000          os_debug_mark:
+0048                      __asm(" cop #3\n");   // COP #3
+    \ 000000 0203                 cop     #3
+0049                  }
+    \ 000002 6b                   rtl
+0050                  
+0051                  void os_debug_mark2(void)
+0052                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_debug_mark2
+    \ 000000          os_debug_mark2:
+0053                      __asm(" cop #4\n");   // COP #3
+    \ 000000 0204                 cop     #4
+0054                  }
+    \ 000002 6b                   rtl
+0055                  
+0056                  void os_c_return(void)
+0057                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_c_return
+    \ 000000          os_c_return:
+0058                      //to do: any cleanup needed before returning to '265?
+0059                      __asm(" cop #5\n");   // COP #5
+    \ 000000 0205                 cop     #5
+0060                  }
+    \ 000002 6b                   rtl
+0061                  
+0062                  void os_puts(const char* s)
+0063                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_puts
+    \ 000000 5a       os_puts:    phy
+    \ 000001 5a                   phy
+0064                      while (*s) {
+    \ 000002 aa                   tax
+    \ 000003 e220     `?L25`:     sep     #32
+    \ 000005 bd0000               lda     0,x
+    \ 000008 c220                 rep     #32
+    \ 00000a f018                 beq     `?L26`
+0065                          os_print_char(*s++);
+    \ 00000c e220                 sep     #32
+    \ 00000e bd0000               lda     0,x
+    \ 000011 8301                 sta     1,s
+    \ 000013 c220                 rep     #32
+    \ 000015 8a                   txa
+    \ 000016 1a                   inc     a
+    \ 000017 8302                 sta     2,s
+    \ 000019 a301                 lda     1,s
+    \ 00001b 22......             jsl     long:os_print_char
+    \ 00001f a302                 lda     2,s
+    \ 000021 aa                   tax
+    \ 000022 80df                 bra     `?L25`
+    \ 000024          `?L26`:
+0066                      }
+0067                  }
+    \ 000024 7a                   ply
+    \ 000025 7a                   ply
+    \ 000026 6b                   rtl
+0068                  
+0069                  void os_clear_screen(void)
+0070                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_clear_screen
+    \ 000000          os_clear_screen:
+0071                      __asm(" cop #0x11\n");
+    \ 000000 0211                 cop     #17
+0072                  }
+    \ 000002 6b                   rtl
+0073                  
+0074                  void os_print_char_serial(char c)
+0075                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_print_char_serial
+    \ 000000          os_print_char_serial:
+0076                      SYSCALL_PARAMS_START = c;   // store to $0F00 in C
+    \ 000000 e220                 sep     #32
+    \ 000002 8d000f               sta     0xf00
+    \ 000005 c220                 rep     #32
+0077                      __asm(" cop #0x12\n"); 
+    \ 000007 0212                 cop     #18
+0078                  }
+    \ 000009 6b                   rtl
+0079                  
+0080                  void os_newline_serial(void)
+0081                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_newline_serial
+    \ 000000          os_newline_serial:
+0082                      __asm(" cop #0x13\n");
+    \ 000000 0213                 cop     #19
+0083                  }
+    \ 000002 6b                   rtl
+0084                  
+0085                  void os_puts_serial(const char* s)
+0086                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_puts_serial
+    \ 000000          os_puts_serial:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+0087                      while (*s) {
+    \ 000002 aa                   tax
+    \ 000003 e220     `?L40`:     sep     #32
+    \ 000005 bd0000               lda     0,x
+    \ 000008 c220                 rep     #32
+    \ 00000a f018                 beq     `?L41`
+0088                          os_print_char_serial(*s++);
+    \ 00000c e220                 sep     #32
+    \ 00000e bd0000               lda     0,x
+    \ 000011 8301                 sta     1,s
+    \ 000013 c220                 rep     #32
+    \ 000015 8a                   txa
+    \ 000016 1a                   inc     a
+    \ 000017 8302                 sta     2,s
+    \ 000019 a301                 lda     1,s
+    \ 00001b 22......             jsl     long:os_print_char_serial
+    \ 00001f a302                 lda     2,s
+    \ 000021 aa                   tax
+    \ 000022 80df                 bra     `?L40`
+    \ 000024          `?L41`:
+0089                      }
+0090                  }
+    \ 000024 7a                   ply
+    \ 000025 7a                   ply
+    \ 000026 6b                   rtl
+0091                  
+0092                  unsigned char os_kbd_get_char()
+0093                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_kbd_get_char
+    \ 000000          os_kbd_get_char:
+0094                      __asm(" cop #0x10\n");
+    \ 000000 0210                 cop     #16
+0095                      return SYSCALL_PARAMS_RESULT;
+    \ 000002 e220                 sep     #32
+    \ 000004 adfe0f               lda     0xffe
+    \ 000007 c220                 rep     #32
+0096                  }
+    \ 000009 6b                   rtl
+0097                  
+
+##########################
+#                        #
+# Memory sizes (decimal) #
+#                        #
+##########################
+
+Executable  (Text): 253 bytes

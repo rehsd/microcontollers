@@ -1,0 +1,2240 @@
+###############################################################################
+#                                                                             #
+# Calypsi ISO C compiler for 65816                               version 5.15 #
+#                                                       02/Apr/2026  23:41:31 #
+# Command line: --code-model=large --data-model=small -c shell.c -o           #
+#               build/shell.o --list-file=build/shell_assembled.lst           #
+#                                                                             #
+###############################################################################
+
+    \ 000000                      .rtmodel version,"1"
+    \ 000000                      .rtmodel codeModel,"large"
+    \ 000000                      .rtmodel dataModel,"small"
+    \ 000000                      .rtmodel core,"65816"
+    \ 000000                      .rtmodel huge,"0"
+    \ 000000                      .rtmodel target,"none-specified"
+    \ 000000                      .extern _Dp
+    \ 000000                      .extern _JmpIndLong
+    \ 000000                      .extern _Mul16
+    \ 000000                      .extern _Vfp
+    \ 000000                      .extern copy_file
+    \ 000000                      .extern dec_to_bcd
+    \ 000000                      .extern delayms
+    \ 000000                      .extern delete_file
+    \ 000000                      .extern fat_init
+    \ 000000                      .extern g_fat_initialized
+    \ 000000                      .extern get_system_time_fat
+    \ 000000                      .extern graphics_test
+    \ 000000                      .extern hex_to_long
+    \ 000000                      .extern list_root_directory
+    \ 000000                      .extern load_bin_from_sd
+    \ 000000                      .extern load_hex_from_sd
+    \ 000000                      .extern os_c_return
+    \ 000000                      .extern os_clear_screen
+    \ 000000                      .extern os_kbd_get_char
+    \ 000000                      .extern os_newline
+    \ 000000                      .extern os_newline_serial
+    \ 000000                      .extern os_newline_with_prompt
+    \ 000000                      .extern os_print_char
+    \ 000000                      .extern os_print_char_serial
+    \ 000000                      .extern os_puts
+    \ 000000                      .extern os_puts_serial
+    \ 000000                      .extern print_dec8
+    \ 000000                      .extern print_dec_year
+    \ 000000                      .extern print_file_contents
+    \ 000000                      .extern print_hex32
+    \ 000000                      .extern print_hex8
+    \ 000000                      .extern print_hex_serial
+    \ 000000                      .extern rename_file
+    \ 000000                      .extern strcmp
+    \ 000000                      .extern strtok
+0001                  #include "../include/calypsi_intellisense_fix.h"
+0002                  #include <calypsi/intrinsics65816.h>
+0003                  #include <string.h>
+0004                  #include "graphics.h"
+0005                  #include "util.h"
+0006                  #include "os.h"
+0007                  #include "filesys.h"
+0008                  
+0009                  #define SHELL_VERSION "0.2"
+0010                  #define MAX_ARGS 8
+0011                  
+0012                  static char cmd_line[64];
+    \ 000000                      .section zdata,bss
+    \ 000000          cmd_line:   .space  64
+0013                  static int idx = 0;
+    \ 000000                      .section zdata,bss
+    \ 000000          idx:        .space  2
+0014                  
+0015                  static void display_date_time(void) {
+    \ 000000                      .section farcode,text
+    \ 000000          display_date_time:
+    \ 000000 3b                   tsc
+    \ 000001 38                   sec
+    \ 000002 e90c00               sbc     ##12
+    \ 000005 1b                   tcs
+0016                      unsigned short f_date, f_time;
+0017                      
+0018                      get_system_time_fat(&f_date, &f_time);
+    \ 000006 3b                   tsc
+    \ 000007 18                   clc
+    \ 000008 690a00               adc     ##10
+    \ 00000b 85..                 sta     dp:.tiny _Dp
+    \ 00000d 3b                   tsc
+    \ 00000e 18                   clc
+    \ 00000f 690800               adc     ##8
+    \ 000012 22......             jsl     long:get_system_time_fat
+0019                  
+0020                      // Unpacking logic remains correct
+0021                      unsigned short display_year = (f_date >> 9) + 1980;
+    \ 000016 a308                 lda     8,s
+    \ 000018 4a                   lsr     a
+    \ 000019 eb                   xba
+    \ 00001a 29ff00               and     ##255
+    \ 00001d 18                   clc
+    \ 00001e 69bc07               adc     ##0x7bc
+    \ 000021 8301                 sta     1,s
+0022                      unsigned char display_month = (f_date >> 5) & 0x0F;
+    \ 000023 a308                 lda     8,s
+    \ 000025 4a                   lsr     a
+    \ 000026 4a                   lsr     a
+    \ 000027 4a                   lsr     a
+    \ 000028 4a                   lsr     a
+    \ 000029 4a                   lsr     a
+    \ 00002a 290f00               and     ##15
+    \ 00002d e220                 sep     #32
+    \ 00002f 8303                 sta     3,s
+    \ 000031 c220                 rep     #32
+0023                      unsigned char display_day   = f_date & 0x1F;
+    \ 000033 a91f00               lda     ##31
+    \ 000036 2308                 and     8,s
+    \ 000038 e220                 sep     #32
+    \ 00003a 8304                 sta     4,s
+    \ 00003c c220                 rep     #32
+0024                      
+0025                      unsigned char display_hour = (f_time >> 11) & 0x1F;
+    \ 00003e a30a                 lda     10,s
+    \ 000040 4a                   lsr     a
+    \ 000041 4a                   lsr     a
+    \ 000042 4a                   lsr     a
+    \ 000043 eb                   xba
+    \ 000044 29ff00               and     ##255
+    \ 000047 291f00               and     ##31
+    \ 00004a e220                 sep     #32
+    \ 00004c 8305                 sta     5,s
+    \ 00004e c220                 rep     #32
+0026                      unsigned char display_min  = (f_time >> 5) & 0x3F;
+    \ 000050 a30a                 lda     10,s
+    \ 000052 4a                   lsr     a
+    \ 000053 4a                   lsr     a
+    \ 000054 4a                   lsr     a
+    \ 000055 4a                   lsr     a
+    \ 000056 4a                   lsr     a
+    \ 000057 293f00               and     ##63
+    \ 00005a e220                 sep     #32
+    \ 00005c 8306                 sta     6,s
+    \ 00005e c220                 rep     #32
+0027                      unsigned char display_sec  = (f_time & 0x1F) * 2;
+    \ 000060 a91f00               lda     ##31
+    \ 000063 230a                 and     10,s
+    \ 000065 0a                   asl     a
+    \ 000066 e220                 sep     #32
+    \ 000068 8307                 sta     7,s
+    \ 00006a c220                 rep     #32
+0028                  
+0029                      os_puts("Current Date/Time: ");
+    \ 00006c a9....               lda     ##`_StringLiteral_Current Date/Time: `
+    \ 00006f 22......             jsl     long:os_puts
+0030                      
+0031                      // Switch from hex to decimal printers
+0032                      print_dec8(display_month);
+    \ 000073 a303                 lda     3,s
+    \ 000075 22......             jsl     long:print_dec8
+0033                      os_print_char('/');
+    \ 000079 a92f00               lda     ##47
+    \ 00007c 22......             jsl     long:os_print_char
+0034                      print_dec8(display_day);
+    \ 000080 a304                 lda     4,s
+    \ 000082 22......             jsl     long:print_dec8
+0035                      os_print_char('/');
+    \ 000086 a92f00               lda     ##47
+    \ 000089 22......             jsl     long:os_print_char
+0036                      print_dec_year(display_year);
+    \ 00008d a301                 lda     1,s
+    \ 00008f 22......             jsl     long:print_dec_year
+0037                      
+0038                      os_puts(" ");
+    \ 000093 a9....               lda     ##`_StringLiteral_ `
+    \ 000096 22......             jsl     long:os_puts
+0039                      
+0040                      print_dec8(display_hour);
+    \ 00009a a305                 lda     5,s
+    \ 00009c 22......             jsl     long:print_dec8
+0041                      os_print_char(':');
+    \ 0000a0 a93a00               lda     ##58
+    \ 0000a3 22......             jsl     long:os_print_char
+0042                      print_dec8(display_min);
+    \ 0000a7 a306                 lda     6,s
+    \ 0000a9 22......             jsl     long:print_dec8
+0043                      os_print_char(':');
+    \ 0000ad a93a00               lda     ##58
+    \ 0000b0 22......             jsl     long:os_print_char
+0044                      print_dec8(display_sec);
+    \ 0000b4 a307                 lda     7,s
+    \ 0000b6 22......             jsl     long:print_dec8
+0045                      
+0046                      os_newline();
+    \ 0000ba 22......             jsl     long:os_newline
+0047                  }
+    \ 0000be 3b                   tsc
+    \ 0000bf 18                   clc
+    \ 0000c0 690c00               adc     ##12
+    \ 0000c3 1b                   tcs
+    \ 0000c4 6b                   rtl
+0048                  
+0049                  typedef void (*command_func_t)(char *args);
+0050                  typedef struct {
+0051                      const char *name;
+0052                      command_func_t func;
+0053                  } shell_command_t;
+0054                  
+0055                  // Forward declarations with updated signatures
+0056                  static void cmd_help(char *args);
+0057                  static void cmd_cls(char *args);
+0058                  static void cmd_ver(char *args);
+0059                  static void cmd_dir(char *args);
+0060                  static void cmd_exit(char *args);
+0061                  static void cmd_type(char *args);
+0062                  static void cmd_run_hex(char *args);
+0063                  static void cmd_memdump_serial(char *args);
+0064                  static void cmd_load_hex(char *args);
+0065                  static void cmd_datetime(char *args);
+0066                  static void cmd_gfxTest(char *args);
+0067                  static void cmd_del(char *args);
+0068                  static void cmd_copy(char *args);
+0069                  static void cmd_ren(char *args);
+0070                  static void cmd_setdatetime(char *args);
+0071                  static void cmd_run_bin(char *args);
+0072                  
+0073                  // Shell command jump table
+0074                  const shell_command_t command_table[] = {
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .public command_table
+    \ 000000          command_table:
+    \ 000000 ....                 .word   _StringLiteral_help
+    \ 000002 ........             .long   cmd_help
+    \ 000006 ....                 .word   `_StringLiteral_?`
+    \ 000008 ........             .long   cmd_help
+    \ 00000c ....                 .word   _StringLiteral_cls
+    \ 00000e ........             .long   cmd_cls
+    \ 000012 ....                 .word   _StringLiteral_ver
+    \ 000014 ........             .long   cmd_ver
+    \ 000018 ....                 .word   _StringLiteral_dir
+    \ 00001a ........             .long   cmd_dir
+    \ 00001e ....                 .word   _StringLiteral_exit
+    \ 000020 ........             .long   cmd_exit
+    \ 000024 ....                 .word   _StringLiteral_type
+    \ 000026 ........             .long   cmd_type
+    \ 00002a ....                 .word   _StringLiteral_runhex
+    \ 00002c ........             .long   cmd_run_hex
+    \ 000030 ....                 .word   _StringLiteral_memdump
+    \ 000032 ........             .long   cmd_memdump_serial
+    \ 000036 ....                 .word   _StringLiteral_load
+    \ 000038 ........             .long   cmd_load_hex
+    \ 00003c ....                 .word   _StringLiteral_datetime
+    \ 00003e ........             .long   cmd_datetime
+    \ 000042 ....                 .word   _StringLiteral_gfxTest
+    \ 000044 ........             .long   cmd_gfxTest
+    \ 000048 ....                 .word   _StringLiteral_del
+    \ 00004a ........             .long   cmd_del
+    \ 00004e ....                 .word   _StringLiteral_copy
+    \ 000050 ........             .long   cmd_copy
+    \ 000054 ....                 .word   _StringLiteral_ren
+    \ 000056 ........             .long   cmd_ren
+    \ 00005a ....                 .word   `_StringLiteral_set-datetime`
+    \ 00005c ........             .long   cmd_setdatetime
+    \ 000060 ....                 .word   _StringLiteral_runbin
+    \ 000062 ........             .long   cmd_run_bin
+    \ 000066 0000                 .word   0
+    \ 000068 00000000             .long   0
+0075                      {"help", cmd_help},
+0076                      {"?",    cmd_help},
+0077                      {"cls",  cmd_cls},
+0078                      {"ver",  cmd_ver},
+0079                      {"dir",  cmd_dir},
+0080                      {"exit", cmd_exit},
+0081                      {"type", cmd_type},
+0082                      {"runhex", cmd_run_hex},
+0083                      {"memdump", cmd_memdump_serial},
+0084                      {"load", cmd_load_hex},
+0085                      {"datetime", cmd_datetime},
+0086                      {"gfxTest", cmd_gfxTest},
+0087                      {"del", cmd_del},
+0088                      {"copy", cmd_copy},
+0089                      {"ren", cmd_ren},
+0090                      {"set-datetime", cmd_setdatetime},
+0091                      {"runbin", cmd_run_bin},
+0092                      {NULL,   NULL}
+0093                  };
+0094                  
+0095                  static void cmd_help(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_help:
+0096                      os_puts("Available: help (?), cls, ver, dir, del, copy, ren,\r exit, type, runhex, memdump, load, datetime,\r gfxTest, set-datetime, runbin");
+    \ 000000 a9....               lda     ##`_StringLiteral_[65,118,97,105,108,97,98,108,101,58,32,104,101,108,112,32,40,63,41,44,32,99,108,115,44,32,118,101,114,44,32,100,105,114,44,32,100,101,108,44,32,99,111,112,121,44,32,114,101,110,44,13,32,101,120,105,116,44,32,116,121,112,101,44,32,114,117,110,104,101,120,44,32,109,101,109,100,117,109,112,44,32,108,111,97,100,44,32,100,97,116,101,116,105,109,101,44,13,32,103,102,120,84,101,115,116,44,32,115,101,116,45,100,97,116,101,116,105,109,101,44,32,114,117,110,98,105,110]`
+    \ 000003 22......             jsl     long:os_puts
+0097                      os_newline_with_prompt();
+    \ 000007 22......             jsl     long:os_newline_with_prompt
+0098                  }
+    \ 00000b 6b                   rtl
+0099                  
+0100                  static void cmd_cls(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_cls:
+0101                      os_clear_screen();
+    \ 000000 22......             jsl     long:os_clear_screen
+0102                      os_print_char('$');
+    \ 000004 a92400               lda     ##36
+    \ 000007 22......             jsl     long:os_print_char
+0103                  }
+    \ 00000b 6b                   rtl
+0104                  
+0105                  static void cmd_ver(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_ver:
+0106                      os_puts("R265Nibbler Shell version ");
+    \ 000000 a9....               lda     ##`_StringLiteral_R265Nibbler Shell version `
+    \ 000003 22......             jsl     long:os_puts
+0107                      os_puts(SHELL_VERSION);
+    \ 000007 a9....               lda     ##`_StringLiteral_0.2`
+    \ 00000a 22......             jsl     long:os_puts
+0108                      os_newline_with_prompt();
+    \ 00000e 22......             jsl     long:os_newline_with_prompt
+0109                  }
+    \ 000012 6b                   rtl
+0110                  
+0111                  static void cmd_dir(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_dir:
+0112                      if (fat_init() == 0) {
+    \ 000000 22......             jsl     long:fat_init
+    \ 000004 29ff00               and     ##255
+    \ 000007 d006                 bne     `?L16`
+0113                          list_root_directory();
+    \ 000009 22......             jsl     long:list_root_directory
+    \ 00000d 8007                 bra     `?L17`
+    \ 00000f          `?L16`:
+0114                      } else {
+0115                          os_puts("FAT16 Init Failed!");
+    \ 00000f a9....               lda     ##`_StringLiteral_FAT16 Init Failed!`
+    \ 000012 22......             jsl     long:os_puts
+    \ 000016          `?L17`:
+0116                      }  
+0117                      os_newline_with_prompt();
+    \ 000016 22......             jsl     long:os_newline_with_prompt
+0118                  }
+    \ 00001a 6b                   rtl
+0119                  
+0120                  static void cmd_exit(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_exit:
+0121                      os_puts("Exiting shell...");
+    \ 000000 a9....               lda     ##`_StringLiteral_Exiting shell...`
+    \ 000003 22......             jsl     long:os_puts
+0122                      os_c_return(); 
+    \ 000007 22......             jsl     long:os_c_return
+0123                  }
+    \ 00000b 6b                   rtl
+0124                  
+0125                  static void cmd_type(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000 aa       cmd_type:   tax
+0126                      // Check if at least one argument (the filename) was provided
+0127                      if (args == NULL || args[0] == '\0') {
+    \ 000001 e8                   inx
+    \ 000002 ca                   dex
+    \ 000003 f014                 beq     `?L27`
+    \ 000005 e220                 sep     #32
+    \ 000007 bd0000               lda     0,x
+    \ 00000a c220                 rep     #32
+    \ 00000c f00b                 beq     `?L27`
+0128                          os_puts("Usage: type <filename>");
+0129                          os_newline();
+0130                          return;
+0131                      }
+0132                  
+0133                      print_file_contents(args);
+    \ 00000e 8a                   txa
+    \ 00000f 22......             jsl     long:print_file_contents
+0134                  
+0135                      os_newline_with_prompt();
+    \ 000013 22......             jsl     long:os_newline_with_prompt
+    \ 000017 800b                 bra     `?L24`
+    \ 000019          `?L27`:
+    \ 000019 a9....               lda     ##`_StringLiteral_Usage: type <filename>`
+    \ 00001c 22......             jsl     long:os_puts
+    \ 000020 22......             jsl     long:os_newline
+    \ 000024          `?L24`:
+0136                  }
+    \ 000024 6b                   rtl
+0137                  
+0138                  static void cmd_memdump_serial(char *args) 
+0139                  {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_memdump_serial:
+    \ 000000 d4..                 pei     dp:.tiny (_Dp+8)
+    \ 000002 d4..                 pei     dp:.tiny (_Dp+10)
+    \ 000004 d4..                 pei     dp:.tiny (_Dp+12)
+    \ 000006 d4..                 pei     dp:.tiny (_Dp+14)
+    \ 000008 5a                   phy
+    \ 000009 5a                   phy
+    \ 00000a 5a                   phy
+    \ 00000b 5a                   phy
+0140                      // 1. Skip leading spaces
+0141                      while (*args == ' ') args++;
+    \ 00000c 8301                 sta     1,s
+    \ 00000e a00000   `?L32`:     ldy     ##0
+    \ 000011 b301                 lda     (1,s),y
+    \ 000013 e220                 sep     #32
+    \ 000015 c920                 cmp     #32
+    \ 000017 c220                 rep     #32
+    \ 000019 d007                 bne     `?L33`
+    \ 00001b a301                 lda     1,s
+    \ 00001d 1a                   inc     a
+    \ 00001e 8301                 sta     1,s
+    \ 000020 80ec                 bra     `?L32`
+    \ 000022          `?L33`:
+0142                  
+0143                      // 2. Check for first parameter (address) - Output help to VGA
+0144                      if (*args == '\0') {
+    \ 000022 a00000               ldy     ##0
+    \ 000025 b301                 lda     (1,s),y
+    \ 000027 29ff00               and     ##255
+    \ 00002a d01d                 bne     `?L35`
+0145                          os_newline();
+    \ 00002c 22......             jsl     long:os_newline
+0146                          os_puts("Usage: memdump [addr_hex] [bytes_hex]");
+    \ 000030 a9....               lda     ##`_StringLiteral_Usage: memdump [addr_hex] [bytes_hex]`
+    \ 000033 22......             jsl     long:os_puts
+0147                          os_newline();
+    \ 000037 22......             jsl     long:os_newline
+0148                          os_puts("Example: memdump 0x005000 0x80");
+    \ 00003b a9....               lda     ##`_StringLiteral_Example: memdump 0x005000 0x80`
+    \ 00003e 22......             jsl     long:os_puts
+0149                          os_newline_with_prompt();
+    \ 000042 22......             jsl     long:os_newline_with_prompt
+0150                          return;
+    \ 000046 4c....               jmp     .kbank `?L31`
+    \ 000049          `?L35`:
+0151                      }
+0152                  
+0153                      unsigned long start_addr = hex_to_long(args);
+    \ 000049 a301                 lda     1,s
+    \ 00004b 22......             jsl     long:hex_to_long
+    \ 00004f 86..                 stx     dp:.tiny (_Dp+10)
+    \ 000051 85..                 sta     dp:.tiny (_Dp+8)
+0154                  
+0155                      // 3. Move to the next argument
+0156                      while (*args != ' ' && *args != '\0') args++; 
+    \ 000053 a301                 lda     1,s
+    \ 000055 8301                 sta     1,s
+    \ 000057 a00000   `?L39`:     ldy     ##0
+    \ 00005a b301                 lda     (1,s),y
+    \ 00005c e220                 sep     #32
+    \ 00005e c920                 cmp     #32
+    \ 000060 c220                 rep     #32
+    \ 000062 f015                 beq     `?L40`
+    \ 000064 a00000               ldy     ##0
+    \ 000067 b301                 lda     (1,s),y
+    \ 000069 29ff00               and     ##255
+    \ 00006c f00b                 beq     `?L40`
+    \ 00006e a301                 lda     1,s
+    \ 000070 1a                   inc     a
+    \ 000071 8301                 sta     1,s
+    \ 000073 a301                 lda     1,s
+    \ 000075 8301                 sta     1,s
+    \ 000077 80de                 bra     `?L39`
+    \ 000079          `?L40`:
+0157                      while (*args == ' ') args++;                  
+    \ 000079 a301                 lda     1,s
+    \ 00007b 8301                 sta     1,s
+    \ 00007d a00000   `?L42`:     ldy     ##0
+    \ 000080 b301                 lda     (1,s),y
+    \ 000082 e220                 sep     #32
+    \ 000084 c920                 cmp     #32
+    \ 000086 c220                 rep     #32
+    \ 000088 d00b                 bne     `?L43`
+    \ 00008a a301                 lda     1,s
+    \ 00008c 1a                   inc     a
+    \ 00008d 8301                 sta     1,s
+    \ 00008f a301                 lda     1,s
+    \ 000091 8301                 sta     1,s
+    \ 000093 80e8                 bra     `?L42`
+    \ 000095          `?L43`:
+0158                  
+0159                      // 4. Check for second parameter (count) - Output error to VGA
+0160                      if (*args == '\0') {
+    \ 000095 a00000               ldy     ##0
+    \ 000098 b301                 lda     (1,s),y
+    \ 00009a 29ff00               and     ##255
+    \ 00009d d01c                 bne     `?L45`
+0161                          os_newline();
+    \ 00009f 22......             jsl     long:os_newline
+0162                          os_puts("Error: Missing byte count.");
+    \ 0000a3 a9....               lda     ##`_StringLiteral_Error: Missing byte count.`
+    \ 0000a6 22......             jsl     long:os_puts
+0163                          os_newline();
+    \ 0000aa 22......             jsl     long:os_newline
+0164                          os_puts("Usage: memdump [addr_hex] [bytes_hex]");
+    \ 0000ae a9....               lda     ##`_StringLiteral_Usage: memdump [addr_hex] [bytes_hex]`
+    \ 0000b1 22......             jsl     long:os_puts
+0165                          os_newline_with_prompt();
+    \ 0000b5 22......             jsl     long:os_newline_with_prompt
+0166                          return;
+    \ 0000b9 802c                 bra     `?L31`
+    \ 0000bb          `?L45`:
+0167                      }
+0168                  
+0169                      unsigned int num_bytes = (unsigned int)hex_to_long(args);
+    \ 0000bb a301                 lda     1,s
+    \ 0000bd 22......             jsl     long:hex_to_long
+    \ 0000c1 8301                 sta     1,s
+0170                  
+0171                      // 5. Execute the dump to Serial
+0172                      unsigned char __far *ptr = (unsigned char __far *)start_addr;
+    \ 0000c3 a6..                 ldx     dp:.tiny (_Dp+10)
+    \ 0000c5 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 0000c7 8303                 sta     3,s
+    \ 0000c9 8a                   txa
+    \ 0000ca 8305                 sta     5,s
+0173                  
+0174                      os_newline_serial();
+    \ 0000cc 22......             jsl     long:os_newline_serial
+0175                      for (unsigned int i = 0; i < num_bytes; i++) {
+    \ 0000d0 a90000               lda     ##0
+    \ 0000d3 8307                 sta     7,s
+    \ 0000d5 a307                 lda     7,s
+    \ 0000d7 8307                 sta     7,s
+    \ 0000d9 a307     `?L50`:     lda     7,s
+    \ 0000db c301                 cmp     1,s
+    \ 0000dd 9019                 bcc     `?L49`
+0176                          if (i % 16 == 0) {
+0177                              if (i > 0) os_newline_serial();
+0178                              
+0179                              unsigned long current_row_addr = start_addr + i;
+0180                              
+0181                              // Print the 32-bit address label to Serial
+0182                              print_hex_serial((unsigned char)(current_row_addr >> 24));
+0183                              print_hex_serial((unsigned char)(current_row_addr >> 16));
+0184                              print_hex_serial((unsigned char)(current_row_addr >> 8));
+0185                              print_hex_serial((unsigned char)(current_row_addr));
+0186                              
+0187                              os_print_char_serial(':');
+0188                              os_print_char_serial(' ');
+0189                          }
+0190                  
+0191                          // Print memory content to Serial
+0192                          print_hex_serial(ptr[i]);
+0193                          os_print_char_serial(' ');
+0194                      }
+0195                      
+0196                      os_newline_serial();
+    \ 0000df 22......             jsl     long:os_newline_serial
+0197                      os_newline_with_prompt();
+    \ 0000e3 22......             jsl     long:os_newline_with_prompt
+    \ 0000e7          `?L31`:
+0198                  }
+    \ 0000e7 7a                   ply
+    \ 0000e8 7a                   ply
+    \ 0000e9 7a                   ply
+    \ 0000ea 7a                   ply
+    \ 0000eb 7a                   ply
+    \ 0000ec 84..                 sty     dp:.tiny (_Dp+14)
+    \ 0000ee 7a                   ply
+    \ 0000ef 84..                 sty     dp:.tiny (_Dp+12)
+    \ 0000f1 7a                   ply
+    \ 0000f2 84..                 sty     dp:.tiny (_Dp+10)
+    \ 0000f4 7a                   ply
+    \ 0000f5 84..                 sty     dp:.tiny (_Dp+8)
+    \ 0000f7 6b                   rtl
+    \ 0000f8 a90f00   `?L49`:     lda     ##15
+    \ 0000fb 2307                 and     7,s
+    \ 0000fd 1a                   inc     a
+    \ 0000fe 3a                   dec     a
+    \ 0000ff d03c                 bne     `?L53`
+    \ 000101 a307                 lda     7,s
+    \ 000103 f004                 beq     `?L56`
+    \ 000105 22......             jsl     long:os_newline_serial
+    \ 000109          `?L56`:
+    \ 000109          `?L57`:
+    \ 000109 a6..                 ldx     dp:.tiny (_Dp+10)
+    \ 00010b a5..                 lda     dp:.tiny (_Dp+8)
+    \ 00010d 18                   clc
+    \ 00010e 6307                 adc     7,s
+    \ 000110 9001                 bcc     `?L273`
+    \ 000112 e8                   inx
+    \ 000113          `?L273`:
+    \ 000113 86..                 stx     dp:.tiny (_Dp+14)
+    \ 000115 85..                 sta     dp:.tiny (_Dp+12)
+    \ 000117 a5..                 lda     dp:.tiny (_Dp+15)
+    \ 000119 22......             jsl     long:print_hex_serial
+    \ 00011d a5..                 lda     dp:.tiny (_Dp+14)
+    \ 00011f 22......             jsl     long:print_hex_serial
+    \ 000123 a5..                 lda     dp:.tiny (_Dp+13)
+    \ 000125 22......             jsl     long:print_hex_serial
+    \ 000129 a5..                 lda     dp:.tiny (_Dp+12)
+    \ 00012b 22......             jsl     long:print_hex_serial
+    \ 00012f a93a00               lda     ##58
+    \ 000132 22......             jsl     long:os_print_char_serial
+    \ 000136 a92000               lda     ##32
+    \ 000139 22......             jsl     long:os_print_char_serial
+    \ 00013d          `?L53`:
+    \ 00013d a305     `?L54`:     lda     5,s
+    \ 00013f 85..                 sta     dp:.tiny (_Dp+2)
+    \ 000141 a303                 lda     3,s
+    \ 000143 85..                 sta     dp:.tiny _Dp
+    \ 000145 18                   clc
+    \ 000146 a5..                 lda     dp:.tiny _Dp
+    \ 000148 6307                 adc     7,s
+    \ 00014a 85..                 sta     dp:.tiny _Dp
+    \ 00014c a7..                 lda     [.tiny _Dp]
+    \ 00014e 22......             jsl     long:print_hex_serial
+    \ 000152 a92000               lda     ##32
+    \ 000155 22......             jsl     long:os_print_char_serial
+    \ 000159 a307                 lda     7,s
+    \ 00015b 1a                   inc     a
+    \ 00015c 8307                 sta     7,s
+    \ 00015e a307                 lda     7,s
+    \ 000160 8307                 sta     7,s
+    \ 000162 4c....               jmp     .kbank `?L50`
+0199                  
+0200                  static void cmd_run_hex(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_run_hex:
+    \ 000000 d4..                 pei     dp:.tiny (_Dp+8)
+    \ 000002 d4..                 pei     dp:.tiny (_Dp+10)
+    \ 000004 5a                   phy
+    \ 000005 8301                 sta     1,s
+0201                  
+0202                      // Check if at least one argument (the filename) was provided
+0203                      if (args == NULL || args[0] == '\0') {
+    \ 000007 a301                 lda     1,s
+    \ 000009 d003                 bne     `?L417`
+    \ 00000b 4c....               jmp     .kbank `?L64`
+    \ 00000e a00000   `?L417`:    ldy     ##0
+    \ 000011 b301                 lda     (1,s),y
+    \ 000013 29ff00               and     ##255
+    \ 000016 d003                 bne     `?L418`
+    \ 000018 4c....               jmp     .kbank `?L64`
+    \ 00001b          `?L418`:
+0204                          os_puts("Usage: run <filename>");
+0205                          os_newline();
+0206                          return;
+0207                      }
+0208                  
+0209                      if (!g_fat_initialized) {
+    \ 00001b e220                 sep     #32
+    \ 00001d ad....               lda     g_fat_initialized
+    \ 000020 c220                 rep     #32
+    \ 000022 d00e                 bne     `?L66`
+0210                          os_puts("FS not init.");
+    \ 000024 a9....               lda     ##`_StringLiteral_FS not init.`
+    \ 000027 22......             jsl     long:os_puts
+0211                          os_newline();
+    \ 00002b 22......             jsl     long:os_newline
+0212                          return;
+    \ 00002f 4c....               jmp     .kbank `?L61`
+    \ 000032          `?L66`:
+0213                      }
+0214                  
+0215                      os_newline();
+    \ 000032 22......             jsl     long:os_newline
+0216                      os_puts("Loading and executing: ");
+    \ 000036 a9....               lda     ##`_StringLiteral_Loading and executing: `
+    \ 000039 22......             jsl     long:os_puts
+0217                      os_puts(args);
+    \ 00003d a301                 lda     1,s
+    \ 00003f 22......             jsl     long:os_puts
+0218                      os_newline();
+    \ 000043 22......             jsl     long:os_newline
+0219                  
+0220                      unsigned long entry = load_hex_from_sd(args);     // < this line causes issues **
+    \ 000047 a301                 lda     1,s
+    \ 000049 22......             jsl     long:load_hex_from_sd
+    \ 00004d 86..                 stx     dp:.tiny (_Dp+10)
+    \ 00004f 85..                 sta     dp:.tiny (_Dp+8)
+0221                  
+0222                      (*(volatile unsigned char __far*)0x000FEE) = (unsigned char)(entry & 0xFF);
+    \ 000051 e220                 sep     #32
+    \ 000053 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000055 8fee0f00             sta     long:0xfee
+    \ 000059 c220                 rep     #32
+0223                      (*(volatile unsigned char __far*)0x000FEF) = (unsigned char)((entry >> 8) & 0xFF);
+    \ 00005b a6..                 ldx     dp:.tiny (_Dp+10)
+    \ 00005d a5..                 lda     dp:.tiny (_Dp+8)
+    \ 00005f a00800               ldy     ##8
+    \ 000062 86..                 stx     dp:.tiny _Dp
+    \ 000064 c8                   iny
+    \ 000065 88                   dey
+    \ 000066 f006                 beq     `?L290`
+    \ 000068          `?L291`:
+    \ 000068 46..                 lsr     dp:.tiny _Dp
+    \ 00006a 6a                   ror     a
+    \ 00006b 88                   dey
+    \ 00006c d0fa                 bne     `?L291`
+    \ 00006e          `?L290`:
+    \ 00006e a6..                 ldx     dp:.tiny _Dp
+    \ 000070 86..                 stx     dp:.tiny (_Dp+2)
+    \ 000072 85..                 sta     dp:.tiny _Dp
+    \ 000074 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000076 a90000               lda     ##0
+    \ 000079 aa                   tax
+    \ 00007a a5..                 lda     dp:.tiny _Dp
+    \ 00007c 29ff00               and     ##255
+    \ 00007f e220                 sep     #32
+    \ 000081 8fef0f00             sta     long:0xfef
+    \ 000085 c220                 rep     #32
+0224                      //(*(volatile unsigned char __far*)0x000FF0) = (unsigned char)((entry >> 16) & 0xFF);   //not needed, as always should be 0x00
+0225                  
+0226                      os_newline();
+    \ 000087 22......             jsl     long:os_newline
+0227                      os_puts("Jumping to 0x");
+    \ 00008b a9....               lda     ##`_StringLiteral_Jumping to 0x`
+    \ 00008e 22......             jsl     long:os_puts
+0228                      print_hex32(entry);          
+    \ 000092 a6..                 ldx     dp:.tiny (_Dp+10)
+    \ 000094 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000096 22......             jsl     long:print_hex32
+0229                      os_newline();
+    \ 00009a 22......             jsl     long:os_newline
+0230                  
+0231                      __asm(" jsl 0x00E000\n");
+    \ 00009e 2200e000             jsl     long:0xe000
+0232                  
+0233                      os_newline();
+    \ 0000a2 22......             jsl     long:os_newline
+0234                      os_puts("Back to Shell...");
+    \ 0000a6 a9....               lda     ##`_StringLiteral_Back to Shell...`
+    \ 0000a9 22......             jsl     long:os_puts
+0235                      os_newline();
+    \ 0000ad 22......             jsl     long:os_newline
+    \ 0000b1 800b                 bra     `?L61`
+    \ 0000b3          `?L64`:
+    \ 0000b3 a9....               lda     ##`_StringLiteral_Usage: run <filename>`
+    \ 0000b6 22......             jsl     long:os_puts
+    \ 0000ba 22......             jsl     long:os_newline
+    \ 0000be          `?L61`:
+0236                  
+0237                  }
+    \ 0000be 7a                   ply
+    \ 0000bf 7a                   ply
+    \ 0000c0 84..                 sty     dp:.tiny (_Dp+10)
+    \ 0000c2 7a                   ply
+    \ 0000c3 84..                 sty     dp:.tiny (_Dp+8)
+    \ 0000c5 6b                   rtl
+0238                  
+0239                  static void cmd_load_hex(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_load_hex:
+    \ 000000 d4..                 pei     dp:.tiny (_Dp+8)
+    \ 000002 d4..                 pei     dp:.tiny (_Dp+10)
+    \ 000004 5a                   phy
+    \ 000005 8301                 sta     1,s
+0240                  
+0241                      // Check if at least one argument (the filename) was provided
+0242                      if (args == NULL || args[0] == '\0') {
+    \ 000007 a301                 lda     1,s
+    \ 000009 d003                 bne     `?L419`
+    \ 00000b 4c....               jmp     .kbank `?L75`
+    \ 00000e a00000   `?L419`:    ldy     ##0
+    \ 000011 b301                 lda     (1,s),y
+    \ 000013 29ff00               and     ##255
+    \ 000016 d003                 bne     `?L420`
+    \ 000018 4c....               jmp     .kbank `?L75`
+    \ 00001b          `?L420`:
+0243                          os_puts("Usage: run <filename>");
+0244                          os_newline();
+0245                          return;
+0246                      }
+0247                  
+0248                      if (!g_fat_initialized) {
+    \ 00001b e220                 sep     #32
+    \ 00001d ad....               lda     g_fat_initialized
+    \ 000020 c220                 rep     #32
+    \ 000022 d00d                 bne     `?L77`
+0249                          os_puts("FS not init.");
+    \ 000024 a9....               lda     ##`_StringLiteral_FS not init.`
+    \ 000027 22......             jsl     long:os_puts
+0250                          os_newline();
+    \ 00002b 22......             jsl     long:os_newline
+0251                          return;
+    \ 00002f 807d                 bra     `?L72`
+    \ 000031          `?L77`:
+0252                      }
+0253                  
+0254                      os_newline();
+    \ 000031 22......             jsl     long:os_newline
+0255                      os_puts("Loading: ");
+    \ 000035 a9....               lda     ##`_StringLiteral_Loading: `
+    \ 000038 22......             jsl     long:os_puts
+0256                      os_puts(args);
+    \ 00003c a301                 lda     1,s
+    \ 00003e 22......             jsl     long:os_puts
+0257                      os_newline();
+    \ 000042 22......             jsl     long:os_newline
+0258                  
+0259                      unsigned long entry = load_hex_from_sd(args);     // < this line causes issues **
+    \ 000046 a301                 lda     1,s
+    \ 000048 22......             jsl     long:load_hex_from_sd
+    \ 00004c 86..                 stx     dp:.tiny (_Dp+10)
+    \ 00004e 85..                 sta     dp:.tiny (_Dp+8)
+0260                  
+0261                      (*(volatile unsigned char __far*)0x000FEE) = (unsigned char)(entry & 0xFF);
+    \ 000050 e220                 sep     #32
+    \ 000052 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000054 8fee0f00             sta     long:0xfee
+    \ 000058 c220                 rep     #32
+0262                      (*(volatile unsigned char __far*)0x000FEF) = (unsigned char)((entry >> 8) & 0xFF);
+    \ 00005a a6..                 ldx     dp:.tiny (_Dp+10)
+    \ 00005c a5..                 lda     dp:.tiny (_Dp+8)
+    \ 00005e a00800               ldy     ##8
+    \ 000061 86..                 stx     dp:.tiny _Dp
+    \ 000063 c8                   iny
+    \ 000064 88                   dey
+    \ 000065 f006                 beq     `?L310`
+    \ 000067          `?L311`:
+    \ 000067 46..                 lsr     dp:.tiny _Dp
+    \ 000069 6a                   ror     a
+    \ 00006a 88                   dey
+    \ 00006b d0fa                 bne     `?L311`
+    \ 00006d          `?L310`:
+    \ 00006d a6..                 ldx     dp:.tiny _Dp
+    \ 00006f 86..                 stx     dp:.tiny (_Dp+2)
+    \ 000071 85..                 sta     dp:.tiny _Dp
+    \ 000073 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000075 a90000               lda     ##0
+    \ 000078 aa                   tax
+    \ 000079 a5..                 lda     dp:.tiny _Dp
+    \ 00007b 29ff00               and     ##255
+    \ 00007e e220                 sep     #32
+    \ 000080 8fef0f00             sta     long:0xfef
+    \ 000084 c220                 rep     #32
+0263                      //(*(volatile unsigned char __far*)0x000FF0) = (unsigned char)((entry >> 16) & 0xFF);   //not needed, as always should be 0x00
+0264                  
+0265                      os_newline();
+    \ 000086 22......             jsl     long:os_newline
+0266                      os_puts("Jump address of 0x");
+    \ 00008a a9....               lda     ##`_StringLiteral_Jump address of 0x`
+    \ 00008d 22......             jsl     long:os_puts
+0267                      print_hex32(entry);          
+    \ 000091 a6..                 ldx     dp:.tiny (_Dp+10)
+    \ 000093 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000095 22......             jsl     long:print_hex32
+0268                      os_newline();
+    \ 000099 22......             jsl     long:os_newline
+0269                  
+0270                      os_newline_with_prompt();
+    \ 00009d 22......             jsl     long:os_newline_with_prompt
+    \ 0000a1 800b                 bra     `?L72`
+    \ 0000a3          `?L75`:
+    \ 0000a3 a9....               lda     ##`_StringLiteral_Usage: run <filename>`
+    \ 0000a6 22......             jsl     long:os_puts
+    \ 0000aa 22......             jsl     long:os_newline
+    \ 0000ae          `?L72`:
+0271                  }
+    \ 0000ae 7a                   ply
+    \ 0000af 7a                   ply
+    \ 0000b0 84..                 sty     dp:.tiny (_Dp+10)
+    \ 0000b2 7a                   ply
+    \ 0000b3 84..                 sty     dp:.tiny (_Dp+8)
+    \ 0000b5 6b                   rtl
+0272                  
+0273                  static void cmd_datetime(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_datetime:
+0274                      display_date_time();
+    \ 000000 22......             jsl     long:display_date_time
+0275                      os_newline_with_prompt();
+    \ 000004 22......             jsl     long:os_newline_with_prompt
+0276                  }
+    \ 000008 6b                   rtl
+0277                  
+0278                  static void cmd_gfxTest(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_gfxTest:
+0279                      graphics_test();
+    \ 000000 22......             jsl     long:graphics_test
+0280                      delayms(2000);
+    \ 000004 a9d007               lda     ##2000
+    \ 000007 22......             jsl     long:delayms
+0281                      os_clear_screen();
+    \ 00000b 22......             jsl     long:os_clear_screen
+0282                      os_print_char('$');
+    \ 00000f a92400               lda     ##36
+    \ 000012 22......             jsl     long:os_print_char
+0283                  }
+    \ 000016 6b                   rtl
+0284                  
+0285                  static void cmd_del(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000 5a       cmd_del:    phy
+    \ 000001 8301                 sta     1,s
+0286                      if (args == NULL || args[0] == '\0') {
+    \ 000003 a301                 lda     1,s
+    \ 000005 f078                 beq     `?L92`
+    \ 000007 a00000               ldy     ##0
+    \ 00000a b301                 lda     (1,s),y
+    \ 00000c 29ff00               and     ##255
+    \ 00000f f06e                 beq     `?L92`
+0287                          os_puts("Usage: del <filename>");
+0288                          os_newline();
+0289                          return;
+0290                      }
+0291                  
+0292                      if (!g_fat_initialized) {
+    \ 000011 e220                 sep     #32
+    \ 000013 ad....               lda     g_fat_initialized
+    \ 000016 c220                 rep     #32
+    \ 000018 d00d                 bne     `?L94`
+0293                          os_puts("FS not init.");
+    \ 00001a a9....               lda     ##`_StringLiteral_FS not init.`
+    \ 00001d 22......             jsl     long:os_puts
+0294                          os_newline();
+    \ 000021 22......             jsl     long:os_newline
+0295                          return;
+    \ 000025 8063                 bra     `?L89`
+    \ 000027          `?L94`:
+0296                      }
+0297                  
+0298                      os_newline();
+    \ 000027 22......             jsl     long:os_newline
+0299                      os_puts("Deleting: ");
+    \ 00002b a9....               lda     ##`_StringLiteral_Deleting: `
+    \ 00002e 22......             jsl     long:os_puts
+0300                      os_puts(args);
+    \ 000032 a301                 lda     1,s
+    \ 000034 22......             jsl     long:os_puts
+0301                      os_newline();
+    \ 000038 22......             jsl     long:os_newline
+0302                  
+0303                      signed char result = delete_file(args);
+    \ 00003c a301                 lda     1,s
+    \ 00003e 22......             jsl     long:delete_file
+0304                      
+0305                      if (result == 0) {
+    \ 000042 29ff00               and     ##255
+    \ 000045 d009                 bne     `?L98`
+0306                          os_puts("File deleted successfully.");
+    \ 000047 a9....               lda     ##`_StringLiteral_File deleted successfully.`
+    \ 00004a 22......             jsl     long:os_puts
+    \ 00004e 8029                 bra     `?L99`
+    \ 000050          `?L98`:
+0307                      } else if (result == -1) {
+    \ 000050 e220                 sep     #32
+    \ 000052 c9ff                 cmp     #-1
+    \ 000054 c220                 rep     #32
+    \ 000056 d009                 bne     `?L101`
+0308                          os_puts("Error: File not found.");
+    \ 000058 a9....               lda     ##`_StringLiteral_Error: File not found.`
+    \ 00005b 22......             jsl     long:os_puts
+    \ 00005f 8018                 bra     `?L102`
+    \ 000061          `?L101`:
+0309                      } else if (result == -2) {
+    \ 000061 e220                 sep     #32
+    \ 000063 c9fe                 cmp     #-2
+    \ 000065 c220                 rep     #32
+    \ 000067 d009                 bne     `?L104`
+0310                          os_puts("Error: Could not update FAT.");
+    \ 000069 a9....               lda     ##`_StringLiteral_Error: Could not update FAT.`
+    \ 00006c 22......             jsl     long:os_puts
+    \ 000070 8007                 bra     `?L105`
+    \ 000072          `?L104`:
+0311                      } else {
+0312                          os_puts("Unknown error during deletion.");
+    \ 000072 a9....               lda     ##`_StringLiteral_Unknown error during deletion.`
+    \ 000075 22......             jsl     long:os_puts
+    \ 000079          `?L102`:
+    \ 000079          `?L105`:
+    \ 000079          `?L99`:
+0313                      }
+0314                  
+0315                      os_newline_with_prompt();
+    \ 000079 22......             jsl     long:os_newline_with_prompt
+    \ 00007d 800b                 bra     `?L89`
+    \ 00007f          `?L92`:
+    \ 00007f a9....               lda     ##`_StringLiteral_Usage: del <filename>`
+    \ 000082 22......             jsl     long:os_puts
+    \ 000086 22......             jsl     long:os_newline
+    \ 00008a          `?L89`:
+0316                  }
+    \ 00008a 7a                   ply
+    \ 00008b 6b                   rtl
+0317                  
+0318                  static void cmd_copy(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000 5a       cmd_copy:   phy
+    \ 000001 5a                   phy
+0319                      char *src = strtok(args, " ");
+    \ 000002 a2....               ldx     ##`_StringLiteral_ `
+    \ 000005 86..                 stx     dp:.tiny _Dp
+    \ 000007 22......             jsl     long:strtok
+    \ 00000b 8301                 sta     1,s
+0320                      char *dst = strtok(NULL, " ");
+    \ 00000d a2....               ldx     ##`_StringLiteral_ `
+    \ 000010 86..                 stx     dp:.tiny _Dp
+    \ 000012 a90000               lda     ##0
+    \ 000015 22......             jsl     long:strtok
+    \ 000019 8303                 sta     3,s
+0321                  
+0322                      if (src == NULL || dst == NULL) {
+    \ 00001b a301                 lda     1,s
+    \ 00001d f038                 beq     `?L112`
+    \ 00001f a303                 lda     3,s
+    \ 000021 f034                 beq     `?L112`
+0323                          os_puts("Usage: copy <src> <dst>");
+0324                          os_newline_with_prompt();
+0325                          return;
+0326                      }
+0327                  
+0328                      signed char result = copy_file(src, dst);
+    \ 000023 a303                 lda     3,s
+    \ 000025 85..                 sta     dp:.tiny _Dp
+    \ 000027 a301                 lda     1,s
+    \ 000029 22......             jsl     long:copy_file
+    \ 00002d e220                 sep     #32
+    \ 00002f 8301                 sta     1,s
+    \ 000031 c220                 rep     #32
+0329                      if (result == 0) {
+    \ 000033 e220                 sep     #32
+    \ 000035 a301                 lda     1,s
+    \ 000037 c220                 rep     #32
+    \ 000039 d009                 bne     `?L114`
+0330                          os_puts("File copied.");
+    \ 00003b a9....               lda     ##`_StringLiteral_File copied.`
+    \ 00003e 22......             jsl     long:os_puts
+    \ 000042 800d                 bra     `?L115`
+    \ 000044          `?L114`:
+0331                      } else {
+0332                          os_puts("Error: ");
+    \ 000044 a9....               lda     ##`_StringLiteral_Error: `
+    \ 000047 22......             jsl     long:os_puts
+0333                          print_hex8((unsigned char)result);
+    \ 00004b a301                 lda     1,s
+    \ 00004d 22......             jsl     long:print_hex8
+    \ 000051          `?L115`:
+0334                      }
+0335                      os_newline_with_prompt();
+    \ 000051 22......             jsl     long:os_newline_with_prompt
+    \ 000055 800b                 bra     `?L109`
+    \ 000057          `?L112`:
+    \ 000057 a9....               lda     ##`_StringLiteral_Usage: copy <src> <dst>`
+    \ 00005a 22......             jsl     long:os_puts
+    \ 00005e 22......             jsl     long:os_newline_with_prompt
+    \ 000062          `?L109`:
+0336                  }
+    \ 000062 7a                   ply
+    \ 000063 7a                   ply
+    \ 000064 6b                   rtl
+0337                  
+0338                  static void cmd_ren(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000 5a       cmd_ren:    phy
+    \ 000001 5a                   phy
+0339                      char *old_name = strtok(args, " ");
+    \ 000002 a2....               ldx     ##`_StringLiteral_ `
+    \ 000005 86..                 stx     dp:.tiny _Dp
+    \ 000007 22......             jsl     long:strtok
+    \ 00000b 8301                 sta     1,s
+0340                      char *new_name = strtok(NULL, " ");
+    \ 00000d a2....               ldx     ##`_StringLiteral_ `
+    \ 000010 86..                 stx     dp:.tiny _Dp
+    \ 000012 a90000               lda     ##0
+    \ 000015 22......             jsl     long:strtok
+    \ 000019 8303                 sta     3,s
+0341                  
+0342                      if (old_name == NULL || new_name == NULL) {
+    \ 00001b a301                 lda     1,s
+    \ 00001d f038                 beq     `?L122`
+    \ 00001f a303                 lda     3,s
+    \ 000021 f034                 beq     `?L122`
+0343                          os_puts("Usage: ren <old> <new>");
+0344                          os_newline_with_prompt();
+0345                          return;
+0346                      }
+0347                  
+0348                      signed char result = rename_file(old_name, new_name);
+    \ 000023 a303                 lda     3,s
+    \ 000025 85..                 sta     dp:.tiny _Dp
+    \ 000027 a301                 lda     1,s
+    \ 000029 22......             jsl     long:rename_file
+    \ 00002d e220                 sep     #32
+    \ 00002f 8301                 sta     1,s
+    \ 000031 c220                 rep     #32
+0349                      if (result == 0) {
+    \ 000033 e220                 sep     #32
+    \ 000035 a301                 lda     1,s
+    \ 000037 c220                 rep     #32
+    \ 000039 d009                 bne     `?L124`
+0350                          os_puts("File renamed.");
+    \ 00003b a9....               lda     ##`_StringLiteral_File renamed.`
+    \ 00003e 22......             jsl     long:os_puts
+    \ 000042 800d                 bra     `?L125`
+    \ 000044          `?L124`:
+0351                      } else {
+0352                          os_puts("Error: ");
+    \ 000044 a9....               lda     ##`_StringLiteral_Error: `
+    \ 000047 22......             jsl     long:os_puts
+0353                          print_hex8((unsigned char)result);
+    \ 00004b a301                 lda     1,s
+    \ 00004d 22......             jsl     long:print_hex8
+    \ 000051          `?L125`:
+0354                      }
+0355                      os_newline_with_prompt();
+    \ 000051 22......             jsl     long:os_newline_with_prompt
+    \ 000055 800b                 bra     `?L119`
+    \ 000057          `?L122`:
+    \ 000057 a9....               lda     ##`_StringLiteral_Usage: ren <old> <new>`
+    \ 00005a 22......             jsl     long:os_puts
+    \ 00005e 22......             jsl     long:os_newline_with_prompt
+    \ 000062          `?L119`:
+0356                  }
+    \ 000062 7a                   ply
+    \ 000063 7a                   ply
+    \ 000064 6b                   rtl
+0357                  
+0358                  static void cmd_setdatetime(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_setdatetime:
+    \ 000000 a8                   tay
+    \ 000001 3b                   tsc
+    \ 000002 38                   sec
+    \ 000003 e90c00               sbc     ##12
+    \ 000006 1b                   tcs
+    \ 000007 98                   tya
+0359                      /* Expected format: set-datetime YY MM DD HH MM SS */
+0360                      unsigned char values[6];
+0361                      char *ptr = args;
+    \ 000008 aa                   tax
+0362                      unsigned char count = 0;
+    \ 000009 e220                 sep     #32
+    \ 00000b a900                 lda     #0
+    \ 00000d 8301                 sta     1,s
+    \ 00000f c220                 rep     #32
+0363                      unsigned char current_val;
+0364                  
+0365                      while (count < 6) {
+    \ 000011 e220                 sep     #32
+    \ 000013 a301                 lda     1,s
+    \ 000015 8302                 sta     2,s
+    \ 000017 c220                 rep     #32
+    \ 000019 a302     `?L130`:    lda     2,s
+    \ 00001b e220                 sep     #32
+    \ 00001d c906                 cmp     #6
+    \ 00001f c220                 rep     #32
+    \ 000021 9003                 bcc     `?L421`
+    \ 000023 4c....               jmp     .kbank `?L131`
+    \ 000026          `?L421`:
+    \ 000026          `?L133`:
+0366                          // 1. Skip anything that isn't a digit (spaces, tabs, etc.)
+0367                          while (*ptr != '\0' && (*ptr < '0' || *ptr > '9')) {
+    \ 000026 e220                 sep     #32
+    \ 000028 bd0000               lda     0,x
+    \ 00002b c220                 rep     #32
+    \ 00002d f020                 beq     `?L134`
+    \ 00002f bd0000               lda     0,x
+    \ 000032 e220                 sep     #32
+    \ 000034 c930                 cmp     #48
+    \ 000036 c220                 rep     #32
+    \ 000038 900c                 bcc     `?L135`
+    \ 00003a a93900               lda     ##57
+    \ 00003d e220                 sep     #32
+    \ 00003f dd0000               cmp     0,x
+    \ 000042 c220                 rep     #32
+    \ 000044 b009                 bcs     `?L134`
+    \ 000046          `?L135`:
+0368                              ptr++;
+    \ 000046 8a                   txa
+    \ 000047 1a                   inc     a
+    \ 000048 8303                 sta     3,s
+    \ 00004a a303                 lda     3,s
+    \ 00004c aa                   tax
+    \ 00004d 80d7                 bra     `?L133`
+    \ 00004f          `?L134`:
+0369                          }
+0370                  
+0371                          // 2. If we hit the end of the string before 6 numbers, stop
+0372                          if (*ptr == '\0') break;
+    \ 00004f e220                 sep     #32
+    \ 000051 bd0000               lda     0,x
+    \ 000054 c220                 rep     #32
+    \ 000056 d003                 bne     `?L422`
+    \ 000058 4c....               jmp     .kbank `?L131`
+    \ 00005b          `?L422`:
+0373                  
+0374                          // 3. Manual A-to-I: Convert digits to a number
+0375                          current_val = 0;
+    \ 00005b e220                 sep     #32
+    \ 00005d a900                 lda     #0
+    \ 00005f 8301                 sta     1,s
+    \ 000061 c220                 rep     #32
+0376                          while (*ptr >= '0' && *ptr <= '9') {
+    \ 000063 8a                   txa
+    \ 000064 8305                 sta     5,s
+    \ 000066 e220                 sep     #32
+    \ 000068 a301                 lda     1,s
+    \ 00006a 8303                 sta     3,s
+    \ 00006c c220                 rep     #32
+    \ 00006e a00000   `?L140`:    ldy     ##0
+    \ 000071 b305                 lda     (5,s),y
+    \ 000073 e220                 sep     #32
+    \ 000075 c930                 cmp     #48
+    \ 000077 c220                 rep     #32
+    \ 000079 9045                 bcc     `?L141`
+    \ 00007b a305                 lda     5,s
+    \ 00007d aa                   tax
+    \ 00007e a93900               lda     ##57
+    \ 000081 e220                 sep     #32
+    \ 000083 dd0000               cmp     0,x
+    \ 000086 c220                 rep     #32
+    \ 000088 9036                 bcc     `?L141`
+0377                              current_val = (current_val * 10) + (*ptr - '0');
+    \ 00008a a303                 lda     3,s
+    \ 00008c 29ff00               and     ##255
+    \ 00008f a20a00               ldx     ##10
+    \ 000092 22......             jsl     long:_Mul16
+    \ 000096 85..                 sta     dp:.tiny _Dp
+    \ 000098 a00000               ldy     ##0
+    \ 00009b b305                 lda     (5,s),y
+    \ 00009d 29ff00               and     ##255
+    \ 0000a0 38                   sec
+    \ 0000a1 e93000               sbc     ##48
+    \ 0000a4 18                   clc
+    \ 0000a5 65..                 adc     dp:.tiny _Dp
+    \ 0000a7 e220                 sep     #32
+    \ 0000a9 8301                 sta     1,s
+    \ 0000ab c220                 rep     #32
+0378                              ptr++;
+    \ 0000ad a305                 lda     5,s
+    \ 0000af 1a                   inc     a
+    \ 0000b0 8303                 sta     3,s
+    \ 0000b2 a303                 lda     3,s
+    \ 0000b4 8305                 sta     5,s
+    \ 0000b6 e220                 sep     #32
+    \ 0000b8 a301                 lda     1,s
+    \ 0000ba 8303                 sta     3,s
+    \ 0000bc c220                 rep     #32
+    \ 0000be 80ae                 bra     `?L140`
+    \ 0000c0          `?L141`:
+0379                          }
+0380                          
+0381                          values[count++] = (unsigned char)current_val;
+    \ 0000c0 e220                 sep     #32
+    \ 0000c2 a302                 lda     2,s
+    \ 0000c4 8301                 sta     1,s
+    \ 0000c6 c220                 rep     #32
+    \ 0000c8 3b                   tsc
+    \ 0000c9 1a                   inc     a
+    \ 0000ca 1a                   inc     a
+    \ 0000cb aa                   tax
+    \ 0000cc e220                 sep     #32
+    \ 0000ce fe0000               inc     0,x
+    \ 0000d1 c220                 rep     #32
+    \ 0000d3 3b                   tsc
+    \ 0000d4 18                   clc
+    \ 0000d5 690700               adc     ##7
+    \ 0000d8 85..                 sta     dp:.tiny _Dp
+    \ 0000da a301                 lda     1,s
+    \ 0000dc 29ff00               and     ##255
+    \ 0000df 18                   clc
+    \ 0000e0 65..                 adc     dp:.tiny _Dp
+    \ 0000e2 aa                   tax
+    \ 0000e3 e220                 sep     #32
+    \ 0000e5 a303                 lda     3,s
+    \ 0000e7 9d0000               sta     0,x
+    \ 0000ea c220                 rep     #32
+    \ 0000ec a305                 lda     5,s
+    \ 0000ee aa                   tax
+    \ 0000ef e220                 sep     #32
+    \ 0000f1 a302                 lda     2,s
+    \ 0000f3 8302                 sta     2,s
+    \ 0000f5 c220                 rep     #32
+    \ 0000f7 4c....               jmp     .kbank `?L130`
+    \ 0000fa          `?L131`:
+0382                      }
+0383                  
+0384                      // Check if we actually got 6 segments
+0385                      if (count < 6) {
+    \ 0000fa a302                 lda     2,s
+    \ 0000fc e220                 sep     #32
+    \ 0000fe c906                 cmp     #6
+    \ 000100 c220                 rep     #32
+    \ 000102 b00d                 bcs     `?L143`
+0386                          os_puts("Usage: set-datetime YY MM DD HH MM SS");
+    \ 000104 a9....               lda     ##`_StringLiteral_Usage: set-datetime YY MM DD HH MM SS`
+    \ 000107 22......             jsl     long:os_puts
+0387                          os_newline_with_prompt();
+    \ 00010b 22......             jsl     long:os_newline_with_prompt
+0388                          return;
+    \ 00010f 805b                 bra     `?L129`
+    \ 000111          `?L143`:
+0389                      }
+0390                  
+0391                      SYSCALL_PARAMS.param0 = (unsigned char)(dec_to_bcd(values[0]) & 0xFF); // Year
+    \ 000111 a307                 lda     7,s
+    \ 000113 22......             jsl     long:dec_to_bcd
+    \ 000117 e220                 sep     #32
+    \ 000119 8d000f               sta     0xf00
+    \ 00011c c220                 rep     #32
+0392                      SYSCALL_PARAMS.param1 = (unsigned char)(dec_to_bcd(values[1]) & 0xFF); // Month
+    \ 00011e a308                 lda     8,s
+    \ 000120 22......             jsl     long:dec_to_bcd
+    \ 000124 e220                 sep     #32
+    \ 000126 8d010f               sta     0xf01
+    \ 000129 c220                 rep     #32
+0393                      SYSCALL_PARAMS.param2 = (unsigned char)(dec_to_bcd(values[2]) & 0xFF); // Day
+    \ 00012b a309                 lda     9,s
+    \ 00012d 22......             jsl     long:dec_to_bcd
+    \ 000131 e220                 sep     #32
+    \ 000133 8d020f               sta     0xf02
+    \ 000136 c220                 rep     #32
+0394                      SYSCALL_PARAMS.param3 = (unsigned char)(dec_to_bcd(values[3]) & 0xFF); // Hour
+    \ 000138 a30a                 lda     10,s
+    \ 00013a 22......             jsl     long:dec_to_bcd
+    \ 00013e e220                 sep     #32
+    \ 000140 8d030f               sta     0xf03
+    \ 000143 c220                 rep     #32
+0395                      SYSCALL_PARAMS.param4 = (unsigned char)(dec_to_bcd(values[4]) & 0xFF); // Minute
+    \ 000145 a30b                 lda     11,s
+    \ 000147 22......             jsl     long:dec_to_bcd
+    \ 00014b e220                 sep     #32
+    \ 00014d 8d040f               sta     0xf04
+    \ 000150 c220                 rep     #32
+0396                      SYSCALL_PARAMS.param5 = (unsigned char)(dec_to_bcd(values[5]) & 0xFF); // Second
+    \ 000152 a30c                 lda     12,s
+    \ 000154 22......             jsl     long:dec_to_bcd
+    \ 000158 e220                 sep     #32
+    \ 00015a 8d050f               sta     0xf05
+    \ 00015d c220                 rep     #32
+0397                  
+0398                      // Trigger the Syscall ($15 = 21 decimal)
+0399                      __asm(" cop #0x15\n");
+    \ 00015f 0215                 cop     #21
+0400                  
+0401                      os_puts("RTC Updated.");
+    \ 000161 a9....               lda     ##`_StringLiteral_RTC Updated.`
+    \ 000164 22......             jsl     long:os_puts
+0402                      os_newline_with_prompt();
+    \ 000168 22......             jsl     long:os_newline_with_prompt
+    \ 00016c          `?L129`:
+0403                  }
+    \ 00016c 3b                   tsc
+    \ 00016d 18                   clc
+    \ 00016e 690c00               adc     ##12
+    \ 000171 1b                   tcs
+    \ 000172 6b                   rtl
+0404                  
+0405                  static void cmd_run_bin(char *args) {
+    \ 000000                      .section farcode,text
+    \ 000000          cmd_run_bin:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 8302                 sta     2,s
+0406                      if (args == NULL || args[0] == '\0') {
+    \ 000004 a302                 lda     2,s
+    \ 000006 f07e                 beq     `?L152`
+    \ 000008 a00000               ldy     ##0
+    \ 00000b b302                 lda     (2,s),y
+    \ 00000d 29ff00               and     ##255
+    \ 000010 f074                 beq     `?L152`
+0407                          os_puts("Usage: run <filename>");
+0408                          os_newline();
+0409                          return;
+0410                      }
+0411                  
+0412                      if (!g_fat_initialized) {
+    \ 000012 e220                 sep     #32
+    \ 000014 ad....               lda     g_fat_initialized
+    \ 000017 c220                 rep     #32
+    \ 000019 d00d                 bne     `?L154`
+0413                          os_puts("FS not init.");
+    \ 00001b a9....               lda     ##`_StringLiteral_FS not init.`
+    \ 00001e 22......             jsl     long:os_puts
+0414                          os_newline();
+    \ 000022 22......             jsl     long:os_newline
+0415                          return;
+    \ 000026 8069                 bra     `?L149`
+    \ 000028          `?L154`:
+0416                      }
+0417                  
+0418                      os_puts("Loading: ");
+    \ 000028 a9....               lda     ##`_StringLiteral_Loading: `
+    \ 00002b 22......             jsl     long:os_puts
+0419                      os_puts(args);
+    \ 00002f a302                 lda     2,s
+    \ 000031 22......             jsl     long:os_puts
+0420                      os_newline();
+    \ 000035 22......             jsl     long:os_newline
+0421                  
+0422                      // Load to 0x03:0000
+0423                      signed char result = load_bin_from_sd(args, 0x030000L);
+    \ 000039 a90000               lda     ##0
+    \ 00003c 85..                 sta     dp:.tiny _Dp
+    \ 00003e a90300               lda     ##3
+    \ 000041 85..                 sta     dp:.tiny (_Dp+2)
+    \ 000043 a302                 lda     2,s
+    \ 000045 22......             jsl     long:load_bin_from_sd
+    \ 000049 e220                 sep     #32
+    \ 00004b 8301                 sta     1,s
+    \ 00004d c220                 rep     #32
+0424                  
+0425                      if (result == 0) {
+    \ 00004f e220                 sep     #32
+    \ 000051 a301                 lda     1,s
+    \ 000053 c220                 rep     #32
+    \ 000055 d01c                 bne     `?L158`
+0426                          os_puts("Jumping to 03:0000...");
+    \ 000057 a9....               lda     ##`_StringLiteral_Jumping to 03:0000...`
+    \ 00005a 22......             jsl     long:os_puts
+0427                          os_newline();
+    \ 00005e 22......             jsl     long:os_newline
+0428                  
+0429                          // Perform the jump
+0430                          __asm(" jsl 0x030000\n");
+    \ 000062 22000003             jsl     long:0x30000
+0431                  
+0432                          os_newline();
+    \ 000066 22......             jsl     long:os_newline
+0433                          os_puts("Back to Shell...");
+    \ 00006a a9....               lda     ##`_StringLiteral_Back to Shell...`
+    \ 00006d 22......             jsl     long:os_puts
+    \ 000071 800d                 bra     `?L159`
+    \ 000073          `?L158`:
+0434                      } else {
+0435                          os_puts("Error loading file: ");
+    \ 000073 a9....               lda     ##`_StringLiteral_Error loading file: `
+    \ 000076 22......             jsl     long:os_puts
+0436                          print_hex8((unsigned char)result);
+    \ 00007a a301                 lda     1,s
+    \ 00007c 22......             jsl     long:print_hex8
+    \ 000080          `?L159`:
+0437                      }
+0438                      os_newline_with_prompt();
+    \ 000080 22......             jsl     long:os_newline_with_prompt
+    \ 000084 800b                 bra     `?L149`
+    \ 000086          `?L152`:
+    \ 000086 a9....               lda     ##`_StringLiteral_Usage: run <filename>`
+    \ 000089 22......             jsl     long:os_puts
+    \ 00008d 22......             jsl     long:os_newline
+    \ 000091          `?L149`:
+0439                  }
+    \ 000091 7a                   ply
+    \ 000092 7a                   ply
+    \ 000093 6b                   rtl
+0440                  
+0441                  
+0442                  ////////////////////////////////////////////////////////////////////
+0443                  
+0444                  void execute_command(char *cmd) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public execute_command
+    \ 000000          execute_command:
+    \ 000000 d4..                 pei     dp:.tiny (_Dp+8)
+    \ 000002 d4..                 pei     dp:.tiny (_Dp+10)
+    \ 000004 5a                   phy
+    \ 000005 5a                   phy
+    \ 000006 5a                   phy
+    \ 000007 5a                   phy
+    \ 000008 8305                 sta     5,s
+0445                      char *args = NULL;
+    \ 00000a a90000               lda     ##0
+    \ 00000d 8301                 sta     1,s
+0446                      int i = 0;
+    \ 00000f a90000               lda     ##0
+0447                  
+0448                      // 1. Find the first space to separate command from arguments
+0449                      for (i = 0; cmd[i] != '\0'; i++) {
+    \ 000012 a90000               lda     ##0
+    \ 000015 8303                 sta     3,s
+    \ 000017 a303                 lda     3,s
+    \ 000019 8307                 sta     7,s
+    \ 00001b a301     `?L165`:    lda     1,s
+    \ 00001d 8303                 sta     3,s
+    \ 00001f a305                 lda     5,s
+    \ 000021 a8                   tay
+    \ 000022 e220                 sep     #32
+    \ 000024 b307                 lda     (7,s),y
+    \ 000026 c220                 rep     #32
+    \ 000028 f027                 beq     `?L167`
+0450                          if (cmd[i] == ' ') {
+    \ 00002a a305                 lda     5,s
+    \ 00002c a8                   tay
+    \ 00002d b307                 lda     (7,s),y
+    \ 00002f e220                 sep     #32
+    \ 000031 c920                 cmp     #32
+    \ 000033 c220                 rep     #32
+    \ 000035 f003                 beq     `?L423`
+    \ 000037 4c....               jmp     .kbank `?L168`
+    \ 00003a          `?L423`:
+0451                              cmd[i] = '\0';      // Terminate command name here
+    \ 00003a a305                 lda     5,s
+    \ 00003c a8                   tay
+    \ 00003d e220                 sep     #32
+    \ 00003f a900                 lda     #0
+    \ 000041 9307                 sta     (7,s),y
+    \ 000043 c220                 rep     #32
+0452                              args = &cmd[i + 1]; // Arguments start after the space
+    \ 000045 a307                 lda     7,s
+    \ 000047 1a                   inc     a
+    \ 000048 18                   clc
+    \ 000049 6305                 adc     5,s
+    \ 00004b 8301                 sta     1,s
+0453                              break;
+    \ 00004d a301                 lda     1,s
+    \ 00004f 8303                 sta     3,s
+    \ 000051          `?L167`:
+0454                          }
+0455                      }
+0456                  
+0457                      // 2. Search jump table
+0458                      for (i = 0; command_table[i].name != NULL; i++) {
+    \ 000051 a90000               lda     ##0
+    \ 000054 8301                 sta     1,s
+    \ 000056 a301                 lda     1,s
+    \ 000058 8301                 sta     1,s
+    \ 00005a a301     `?L173`:    lda     1,s
+    \ 00005c a20600               ldx     ##6
+    \ 00005f 22......             jsl     long:_Mul16
+    \ 000063 aa                   tax
+    \ 000064 bd....               lda     command_table,x
+    \ 000067 d00d                 bne     `?L172`
+0459                          if (strcmp(cmd, command_table[i].name) == 0) {
+0460                              // Pass the pointer to the arguments (or NULL if none)
+0461                              command_table[i].func(args);
+0462                              return;
+0463                          }
+0464                      }
+0465                  
+0466                      os_puts("Unknown command.");
+    \ 000069 a9....               lda     ##`_StringLiteral_Unknown command.`
+    \ 00006c 22......             jsl     long:os_puts
+0467                      os_newline_with_prompt();
+    \ 000070 22......             jsl     long:os_newline_with_prompt
+    \ 000074 8039                 bra     `?L163`
+    \ 000076 a301     `?L172`:    lda     1,s
+    \ 000078 a20600               ldx     ##6
+    \ 00007b 22......             jsl     long:_Mul16
+    \ 00007f a8                   tay
+    \ 000080 be....               ldx     command_table,y
+    \ 000083 86..                 stx     dp:.tiny _Dp
+    \ 000085 a305                 lda     5,s
+    \ 000087 22......             jsl     long:strcmp
+    \ 00008b 1a                   inc     a
+    \ 00008c 3a                   dec     a
+    \ 00008d d02b                 bne     `?L176`
+    \ 00008f a303                 lda     3,s
+    \ 000091 48                   pha
+    \ 000092 a303                 lda     3,s
+    \ 000094 a20600               ldx     ##6
+    \ 000097 22......             jsl     long:_Mul16
+    \ 00009b 18                   clc
+    \ 00009c 69....               adc     ##command_table
+    \ 00009f aa                   tax
+    \ 0000a0 bc0400               ldy     4,x
+    \ 0000a3 84..                 sty     dp:.tiny (_Dp+10)
+    \ 0000a5 bc0200               ldy     2,x
+    \ 0000a8 84..                 sty     dp:.tiny (_Dp+8)
+    \ 0000aa 68                   pla
+    \ 0000ab 22......             jsl     long:_JmpIndLong
+    \ 0000af          `?L163`:
+0468                  }
+    \ 0000af 7a                   ply
+    \ 0000b0 7a                   ply
+    \ 0000b1 7a                   ply
+    \ 0000b2 7a                   ply
+    \ 0000b3 7a                   ply
+    \ 0000b4 84..                 sty     dp:.tiny (_Dp+10)
+    \ 0000b6 7a                   ply
+    \ 0000b7 84..                 sty     dp:.tiny (_Dp+8)
+    \ 0000b9 6b                   rtl
+    \ 0000ba a301     `?L176`:    lda     1,s
+    \ 0000bc 1a                   inc     a
+    \ 0000bd 8301                 sta     1,s
+    \ 0000bf a301                 lda     1,s
+    \ 0000c1 8301                 sta     1,s
+    \ 0000c3 8095                 bra     `?L173`
+    \ 0000c5 a307     `?L168`:    lda     7,s
+    \ 0000c7 1a                   inc     a
+    \ 0000c8 8303                 sta     3,s
+    \ 0000ca a303                 lda     3,s
+    \ 0000cc 8307                 sta     7,s
+    \ 0000ce 4c....               jmp     .kbank `?L165`
+0469                  
+0470                  static void keyboard_check()
+0471                  {
+    \ 000000                      .section farcode,text
+    \ 000000          keyboard_check:
+    \ 000000 5a                   phy
+0472                      char c;
+0473                  
+0474                      c = os_kbd_get_char();
+    \ 000001 22......             jsl     long:os_kbd_get_char
+    \ 000005 e220                 sep     #32
+    \ 000007 8301                 sta     1,s
+    \ 000009 c220                 rep     #32
+0475                  
+0476                      if (c != 0) {
+    \ 00000b e220                 sep     #32
+    \ 00000d a301                 lda     1,s
+    \ 00000f c220                 rep     #32
+    \ 000011 d003                 bne     `?L424`
+    \ 000013 4c....               jmp     .kbank `?L183`
+    \ 000016          `?L424`:
+0477                          if (c == 0x0D) { // ENTER
+    \ 000016 a301                 lda     1,s
+    \ 000018 e220                 sep     #32
+    \ 00001a c90d                 cmp     #13
+    \ 00001c c220                 rep     #32
+    \ 00001e d03f                 bne     `?L186`
+0478                              cmd_line[idx] = '\0'; // Null terminate
+    \ 000020 ae....               ldx     idx
+    \ 000023 e220                 sep     #32
+    \ 000025 a900                 lda     #0
+    \ 000027 9d....               sta     cmd_line,x
+    \ 00002a c220                 rep     #32
+0479                              os_newline();
+    \ 00002c 22......             jsl     long:os_newline
+0480                              
+0481                              if (idx > 0) {
+    \ 000030 a90000               lda     ##0
+    \ 000033 38                   sec
+    \ 000034 ed....               sbc     idx
+    \ 000037 5003                 bvc     `?L394`
+    \ 000039 490080               eor     ##-32768
+    \ 00003c 1009     `?L394`:    bpl     `?L189`
+0482                                  execute_command(cmd_line);
+    \ 00003e a9....               lda     ##cmd_line
+    \ 000041 22......             jsl     long:execute_command
+    \ 000045 8007                 bra     `?L190`
+    \ 000047          `?L189`:
+0483                              }
+0484                              else {
+0485                                  //just an enter key
+0486                                  os_print_char('$');
+    \ 000047 a92400               lda     ##36
+    \ 00004a 22......             jsl     long:os_print_char
+    \ 00004e          `?L190`:
+0487                              }
+0488                              idx = 0; // Reset for next command
+    \ 00004e a20000               ldx     ##0
+    \ 000051 8e....               stx     idx
+    \ 000054          `?L192`:
+0489                  
+0490                                  
+0491                              // This loop clears the buffer of any immediate repeats -- this really shouldn't be necessary! *bug
+0492                              while(os_kbd_get_char() != 0) {};
+    \ 000054 22......             jsl     long:os_kbd_get_char
+    \ 000058 29ff00               and     ##255
+    \ 00005b d0f7                 bne     `?L192`
+    \ 00005d 8058                 bra     `?L187`
+    \ 00005f          `?L186`:
+0493                  
+0494                          } 
+0495                          else if (c == 0x08 || c == 0x7F) { // Backspace
+    \ 00005f a301                 lda     1,s
+    \ 000061 e220                 sep     #32
+    \ 000063 c908                 cmp     #8
+    \ 000065 c220                 rep     #32
+    \ 000067 f036                 beq     `?L197`
+    \ 000069 a301                 lda     1,s
+    \ 00006b e220                 sep     #32
+    \ 00006d c97f                 cmp     #127
+    \ 00006f c220                 rep     #32
+    \ 000071 f02c                 beq     `?L197`
+0496                              if (idx > 0) {
+0497                                  idx--;
+0498                                  // Optional: Handle visual backspace if supported
+0499                                  os_print_char('{'); 
+0500                              }
+0501                          }
+0502                          else if (c >= 0x20 && c <= 0x7E) {
+    \ 000073 a301                 lda     1,s
+    \ 000075 e220                 sep     #32
+    \ 000077 c920                 cmp     #32
+    \ 000079 c220                 rep     #32
+    \ 00007b 9020                 bcc     `?L201`
+    \ 00007d a97e00               lda     ##126
+    \ 000080 e220                 sep     #32
+    \ 000082 c301                 cmp     1,s
+    \ 000084 c220                 rep     #32
+    \ 000086 9015                 bcc     `?L201`
+0503                              // Echo the character and store it
+0504                              os_print_char(c);
+    \ 000088 a301                 lda     1,s
+    \ 00008a 22......             jsl     long:os_print_char
+0505                              cmd_line[idx++] = c;
+    \ 00008e ae....               ldx     idx
+    \ 000091 ee....               inc     idx
+    \ 000094 e220                 sep     #32
+    \ 000096 a301                 lda     1,s
+    \ 000098 9d....               sta     cmd_line,x
+    \ 00009b c220                 rep     #32
+    \ 00009d          `?L201`:
+    \ 00009d 8018     `?L202`:    bra     `?L196`
+    \ 00009f a90000   `?L197`:    lda     ##0
+    \ 0000a2 38                   sec
+    \ 0000a3 ed....               sbc     idx
+    \ 0000a6 5003                 bvc     `?L400`
+    \ 0000a8 490080               eor     ##-32768
+    \ 0000ab 100a     `?L400`:    bpl     `?L198`
+    \ 0000ad ce....               dec     idx
+    \ 0000b0 a97b00               lda     ##123
+    \ 0000b3 22......             jsl     long:os_print_char
+    \ 0000b7          `?L183`:
+    \ 0000b7          `?L187`:
+    \ 0000b7          `?L196`:
+    \ 0000b7          `?L198`:
+    \ 0000b7          `?L199`:
+    \ 0000b7          `?L184`:
+0506                          }
+0507                      }
+0508                  }
+    \ 0000b7 7a                   ply
+    \ 0000b8 6b                   rtl
+0509                  
+0510                  void main(void)
+0511                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public main
+    \ 000000          main:
+0512                      if (fat_init() != 0) {
+    \ 000000 22......             jsl     long:fat_init
+    \ 000004 29ff00               and     ##255
+    \ 000007 f00b                 beq     `?L207`
+0513                          os_puts("FAT16 Init Failed!");
+    \ 000009 a9....               lda     ##`_StringLiteral_FAT16 Init Failed!`
+    \ 00000c 22......             jsl     long:os_puts
+0514                          os_newline();
+    \ 000010 22......             jsl     long:os_newline
+    \ 000014          `?L207`:
+    \ 000014          `?L208`:
+0515                      }  
+0516                  
+0517                      os_newline();
+    \ 000014 22......             jsl     long:os_newline
+0518                      os_puts("Welcome to the R265Nibbler Shell version ");
+    \ 000018 a9....               lda     ##`_StringLiteral_Welcome to the R265Nibbler Shell version `
+    \ 00001b 22......             jsl     long:os_puts
+0519                      os_puts(SHELL_VERSION);
+    \ 00001f a9....               lda     ##`_StringLiteral_0.2`
+    \ 000022 22......             jsl     long:os_puts
+0520                      os_print_char('!');
+    \ 000026 a92100               lda     ##33
+    \ 000029 22......             jsl     long:os_print_char
+0521                      os_newline();
+    \ 00002d 22......             jsl     long:os_newline
+0522                      display_date_time();
+    \ 000031 22......             jsl     long:display_date_time
+0523                      
+0524                      
+0525                      os_newline_serial();
+    \ 000035 22......             jsl     long:os_newline_serial
+0526                      os_puts_serial("Shell loaded");
+    \ 000039 a9....               lda     ##`_StringLiteral_Shell loaded`
+    \ 00003c 22......             jsl     long:os_puts_serial
+0527                      os_newline_serial();
+    \ 000040 22......             jsl     long:os_newline_serial
+0528                  
+0529                      os_print_char('$');
+    \ 000044 a92400               lda     ##36
+    \ 000047 22......             jsl     long:os_print_char
+    \ 00004b          `?L210`:
+0530                  
+0531                      while(1) {
+0532                          keyboard_check();
+    \ 00004b 22......             jsl     long:keyboard_check
+    \ 00004f 80fa                 bra     `?L210`
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_fat_size
+    \ 000000          g_fat_size: .space  2
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_partition_lba_start
+    \ 000000          g_partition_lba_start:
+    \ 000000                      .space  4
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_rsvd_sec_cnt
+    \ 000000          g_rsvd_sec_cnt:
+    \ 000000                      .space  2
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_fat_size_sectors
+    \ 000000          g_fat_size_sectors:
+    \ 000000                      .space  2
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_num_fats
+    \ 000000          g_num_fats: .space  1
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_root_entries
+    \ 000000          g_root_entries:
+    \ 000000                      .space  2
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_root_lba_start
+    \ 000000          g_root_lba_start:
+    \ 000000                      .space  4
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_root_sz_sects
+    \ 000000          g_root_sz_sects:
+    \ 000000                      .space  2
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_data_lba_start
+    \ 000000          g_data_lba_start:
+    \ 000000                      .space  4
+    \ 000000                      .section zdata,bss
+    \ 000000                      .public g_sectors_per_cluster
+    \ 000000          g_sectors_per_cluster:
+    \ 000000                      .space  1
+    \ 000000                      .section cfar,rodata
+    \ 000000                      .public hex_digits_far
+    \ 000000          hex_digits_far:
+    \ 000000 30313233             .byte   48,49,50,51,52,53,54,55
+    \ 000004 34353637
+    \ 000008 38394142             .byte   56,57,65,66,67,68,69,70
+    \ 00000c 43444546
+    \ 000010 00                   .byte   0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .public hex_digits
+    \ 000000 30313233 hex_digits: .byte   48,49,50,51,52,53,54,55
+    \ 000004 34353637
+    \ 000008 38394142             .byte   56,57,65,66,67,68,69,70
+    \ 00000c 43444546
+    \ 000010 00                   .byte   0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_ `
+    \ 000000          `_StringLiteral_ `:
+    \ 000000 2000                 .byte   32,0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_0.2`
+    \ 000000          `_StringLiteral_0.2`:
+    \ 000000 302e3200             .byte   48,46,50,0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_?`
+    \ 000000          `_StringLiteral_?`:
+    \ 000000 3f00                 .byte   63,0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_[65,118,97,105,108,97,98,108,101,58,32,104,101,108,112,32,40,63,41,44,32,99,108,115,44,32,118,101,114,44,32,100,105,114,44,32,100,101,108,44,32,99,111,112,121,44,32,114,101,110,44,13,32,101,120,105,116,44,32,116,121,112,101,44,32,114,117,110,104,101,120,44,32,109,101,109,100,117,109,112,44,32,108,111,97,100,44,32,100,97,116,101,116,105,109,101,44,13,32,103,102,120,84,101,115,116,44,32,115,101,116,45,100,97,116,101,116,105,109,101,44,32,114,117,110,98,105,110]`
+    \ 000000          `_StringLiteral_[65,118,97,105,108,97,98,108,101,58,32,104,101,108,112,32,40,63,41,44,32,99,108,115,44,32,118,101,114,44,32,100,105,114,44,32,100,101,108,44,32,99,111,112,121,44,32,114,101,110,44,13,32,101,120,105,116,44,32,116,121,112,101,44,32,114,117,110,104,101,120,44,32,109,101,109,100,117,109,112,44,32,108,111,97,100,44,32,100,97,116,101,116,105,109,101,44,13,32,103,102,120,84,101,115,116,44,32,115,101,116,45,100,97,116,101,116,105,109,101,44,32,114,117,110,98,105,110]`:
+    \ 000000 41766169             .byte   65,118,97,105,108,97,98,108,101,58,32,104,101,108,112,32,40,63,41,44,32,99,108,115,44,32,118,101,114,44,32,100,105,114,44,32,100,101,108,44,32,99,111,112,121,44,32,114,101,110,44,13,32,101,120,105,116,44,32,116,121,112,101,44,32,114,117,110,104,101,120,44,32,109,101,109,100,117,109,112,44,32,108,111,97,100,44,32,100,97,116,101,116,105,109,101,44,13,32,103,102,120,84,101,115,116,44,32,115,101,116,45,100,97,116,101,116,105,109,101,44,32,114,117,110,98,105,110,0
+    \ 000004 6c61626c
+    \ 000008 653a2068
+    \ 00000c 656c7020
+    \ 000010 283f292c
+    \ 000014 20636c73
+    \ 000018 2c207665
+    \ 00001c 722c2064
+    \ 000020 69722c20
+    \ 000024 64656c2c
+    \ 000028 20636f70
+    \ 00002c 792c2072
+    \ 000030 656e2c0d
+    \ 000034 20657869
+    \ 000038 742c2074
+    \ 00003c 7970652c
+    \ 000040 2072756e
+    \ 000044 6865782c
+    \ 000048 206d656d
+    \ 00004c 64756d70
+    \ 000050 2c206c6f
+    \ 000054 61642c20
+    \ 000058 64617465
+    \ 00005c 74696d65
+    \ 000060 2c0d2067
+    \ 000064 66785465
+    \ 000068 73742c20
+    \ 00006c 7365742d
+    \ 000070 64617465
+    \ 000074 74696d65
+    \ 000078 2c207275
+    \ 00007c 6e62696e
+    \ 000080 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Back to Shell...`
+    \ 000000          `_StringLiteral_Back to Shell...`:
+    \ 000000 4261636b             .byte   66,97,99,107,32,116,111,32,83,104,101,108,108,46,46,46,0
+    \ 000004 20746f20
+    \ 000008 5368656c
+    \ 00000c 6c2e2e2e
+    \ 000010 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Current Date/Time: `
+    \ 000000          `_StringLiteral_Current Date/Time: `:
+    \ 000000 43757272             .byte   67,117,114,114,101,110,116,32,68,97,116,101,47,84,105,109,101,58,32,0
+    \ 000004 656e7420
+    \ 000008 44617465
+    \ 00000c 2f54696d
+    \ 000010 653a2000
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Deleting: `
+    \ 000000          `_StringLiteral_Deleting: `:
+    \ 000000 44656c65             .byte   68,101,108,101,116,105,110,103,58,32,0
+    \ 000004 74696e67
+    \ 000008 3a2000
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Error loading file: `
+    \ 000000          `_StringLiteral_Error loading file: `:
+    \ 000000 4572726f             .byte   69,114,114,111,114,32,108,111,97,100,105,110,103,32,102,105,108,101,58,32,0
+    \ 000004 72206c6f
+    \ 000008 6164696e
+    \ 00000c 67206669
+    \ 000010 6c653a20
+    \ 000014 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Error: `
+    \ 000000          `_StringLiteral_Error: `:
+    \ 000000 4572726f             .byte   69,114,114,111,114,58,32,0
+    \ 000004 723a2000
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Error: Could not update FAT.`
+    \ 000000          `_StringLiteral_Error: Could not update FAT.`:
+    \ 000000 4572726f             .byte   69,114,114,111,114,58,32,67,111,117,108,100,32,110,111,116,32,117,112,100,97,116,101,32,70,65,84,46,0
+    \ 000004 723a2043
+    \ 000008 6f756c64
+    \ 00000c 206e6f74
+    \ 000010 20757064
+    \ 000014 61746520
+    \ 000018 4641542e
+    \ 00001c 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Error: File not found.`
+    \ 000000          `_StringLiteral_Error: File not found.`:
+    \ 000000 4572726f             .byte   69,114,114,111,114,58,32,70,105,108,101,32,110,111,116,32,102,111,117,110,100,46,0
+    \ 000004 723a2046
+    \ 000008 696c6520
+    \ 00000c 6e6f7420
+    \ 000010 666f756e
+    \ 000014 642e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Error: Missing byte count.`
+    \ 000000          `_StringLiteral_Error: Missing byte count.`:
+    \ 000000 4572726f             .byte   69,114,114,111,114,58,32,77,105,115,115,105,110,103,32,98,121,116,101,32,99,111,117,110,116,46,0
+    \ 000004 723a204d
+    \ 000008 69737369
+    \ 00000c 6e672062
+    \ 000010 79746520
+    \ 000014 636f756e
+    \ 000018 742e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Example: memdump 0x005000 0x80`
+    \ 000000          `_StringLiteral_Example: memdump 0x005000 0x80`:
+    \ 000000 4578616d             .byte   69,120,97,109,112,108,101,58,32,109,101,109,100,117,109,112,32,48,120,48,48,53,48,48,48,32,48,120,56,48,0
+    \ 000004 706c653a
+    \ 000008 206d656d
+    \ 00000c 64756d70
+    \ 000010 20307830
+    \ 000014 30353030
+    \ 000018 30203078
+    \ 00001c 383000
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Exiting shell...`
+    \ 000000          `_StringLiteral_Exiting shell...`:
+    \ 000000 45786974             .byte   69,120,105,116,105,110,103,32,115,104,101,108,108,46,46,46,0
+    \ 000004 696e6720
+    \ 000008 7368656c
+    \ 00000c 6c2e2e2e
+    \ 000010 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_FAT16 Init Failed!`
+    \ 000000          `_StringLiteral_FAT16 Init Failed!`:
+    \ 000000 46415431             .byte   70,65,84,49,54,32,73,110,105,116,32,70,97,105,108,101,100,33,0
+    \ 000004 3620496e
+    \ 000008 69742046
+    \ 00000c 61696c65
+    \ 000010 642100
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_FS not init.`
+    \ 000000          `_StringLiteral_FS not init.`:
+    \ 000000 4653206e             .byte   70,83,32,110,111,116,32,105,110,105,116,46,0
+    \ 000004 6f742069
+    \ 000008 6e69742e
+    \ 00000c 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_File copied.`
+    \ 000000          `_StringLiteral_File copied.`:
+    \ 000000 46696c65             .byte   70,105,108,101,32,99,111,112,105,101,100,46,0
+    \ 000004 20636f70
+    \ 000008 6965642e
+    \ 00000c 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_File deleted successfully.`
+    \ 000000          `_StringLiteral_File deleted successfully.`:
+    \ 000000 46696c65             .byte   70,105,108,101,32,100,101,108,101,116,101,100,32,115,117,99,99,101,115,115,102,117,108,108,121,46,0
+    \ 000004 2064656c
+    \ 000008 65746564
+    \ 00000c 20737563
+    \ 000010 63657373
+    \ 000014 66756c6c
+    \ 000018 792e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_File renamed.`
+    \ 000000          `_StringLiteral_File renamed.`:
+    \ 000000 46696c65             .byte   70,105,108,101,32,114,101,110,97,109,101,100,46,0
+    \ 000004 2072656e
+    \ 000008 616d6564
+    \ 00000c 2e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Jump address of 0x`
+    \ 000000          `_StringLiteral_Jump address of 0x`:
+    \ 000000 4a756d70             .byte   74,117,109,112,32,97,100,100,114,101,115,115,32,111,102,32,48,120,0
+    \ 000004 20616464
+    \ 000008 72657373
+    \ 00000c 206f6620
+    \ 000010 307800
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Jumping to 03:0000...`
+    \ 000000          `_StringLiteral_Jumping to 03:0000...`:
+    \ 000000 4a756d70             .byte   74,117,109,112,105,110,103,32,116,111,32,48,51,58,48,48,48,48,46,46,46,0
+    \ 000004 696e6720
+    \ 000008 746f2030
+    \ 00000c 333a3030
+    \ 000010 30302e2e
+    \ 000014 2e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Jumping to 0x`
+    \ 000000          `_StringLiteral_Jumping to 0x`:
+    \ 000000 4a756d70             .byte   74,117,109,112,105,110,103,32,116,111,32,48,120,0
+    \ 000004 696e6720
+    \ 000008 746f2030
+    \ 00000c 7800
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Loading and executing: `
+    \ 000000          `_StringLiteral_Loading and executing: `:
+    \ 000000 4c6f6164             .byte   76,111,97,100,105,110,103,32,97,110,100,32,101,120,101,99,117,116,105,110,103,58,32,0
+    \ 000004 696e6720
+    \ 000008 616e6420
+    \ 00000c 65786563
+    \ 000010 7574696e
+    \ 000014 673a2000
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Loading: `
+    \ 000000          `_StringLiteral_Loading: `:
+    \ 000000 4c6f6164             .byte   76,111,97,100,105,110,103,58,32,0
+    \ 000004 696e673a
+    \ 000008 2000
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_R265Nibbler Shell version `
+    \ 000000          `_StringLiteral_R265Nibbler Shell version `:
+    \ 000000 52323635             .byte   82,50,54,53,78,105,98,98,108,101,114,32,83,104,101,108,108,32,118,101,114,115,105,111,110,32,0
+    \ 000004 4e696262
+    \ 000008 6c657220
+    \ 00000c 5368656c
+    \ 000010 6c207665
+    \ 000014 7273696f
+    \ 000018 6e2000
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_RTC Updated.`
+    \ 000000          `_StringLiteral_RTC Updated.`:
+    \ 000000 52544320             .byte   82,84,67,32,85,112,100,97,116,101,100,46,0
+    \ 000004 55706461
+    \ 000008 7465642e
+    \ 00000c 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Shell loaded`
+    \ 000000          `_StringLiteral_Shell loaded`:
+    \ 000000 5368656c             .byte   83,104,101,108,108,32,108,111,97,100,101,100,0
+    \ 000004 6c206c6f
+    \ 000008 61646564
+    \ 00000c 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Unknown command.`
+    \ 000000          `_StringLiteral_Unknown command.`:
+    \ 000000 556e6b6e             .byte   85,110,107,110,111,119,110,32,99,111,109,109,97,110,100,46,0
+    \ 000004 6f776e20
+    \ 000008 636f6d6d
+    \ 00000c 616e642e
+    \ 000010 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Unknown error during deletion.`
+    \ 000000          `_StringLiteral_Unknown error during deletion.`:
+    \ 000000 556e6b6e             .byte   85,110,107,110,111,119,110,32,101,114,114,111,114,32,100,117,114,105,110,103,32,100,101,108,101,116,105,111,110,46,0
+    \ 000004 6f776e20
+    \ 000008 6572726f
+    \ 00000c 72206475
+    \ 000010 72696e67
+    \ 000014 2064656c
+    \ 000018 6574696f
+    \ 00001c 6e2e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Usage: copy <src> <dst>`
+    \ 000000          `_StringLiteral_Usage: copy <src> <dst>`:
+    \ 000000 55736167             .byte   85,115,97,103,101,58,32,99,111,112,121,32,60,115,114,99,62,32,60,100,115,116,62,0
+    \ 000004 653a2063
+    \ 000008 6f707920
+    \ 00000c 3c737263
+    \ 000010 3e203c64
+    \ 000014 73743e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Usage: del <filename>`
+    \ 000000          `_StringLiteral_Usage: del <filename>`:
+    \ 000000 55736167             .byte   85,115,97,103,101,58,32,100,101,108,32,60,102,105,108,101,110,97,109,101,62,0
+    \ 000004 653a2064
+    \ 000008 656c203c
+    \ 00000c 66696c65
+    \ 000010 6e616d65
+    \ 000014 3e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Usage: memdump [addr_hex] [bytes_hex]`
+    \ 000000          `_StringLiteral_Usage: memdump [addr_hex] [bytes_hex]`:
+    \ 000000 55736167             .byte   85,115,97,103,101,58,32,109,101,109,100,117,109,112,32,91,97,100,100,114,95,104,101,120,93,32,91,98,121,116,101,115,95,104,101,120,93,0
+    \ 000004 653a206d
+    \ 000008 656d6475
+    \ 00000c 6d70205b
+    \ 000010 61646472
+    \ 000014 5f686578
+    \ 000018 5d205b62
+    \ 00001c 79746573
+    \ 000020 5f686578
+    \ 000024 5d00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Usage: ren <old> <new>`
+    \ 000000          `_StringLiteral_Usage: ren <old> <new>`:
+    \ 000000 55736167             .byte   85,115,97,103,101,58,32,114,101,110,32,60,111,108,100,62,32,60,110,101,119,62,0
+    \ 000004 653a2072
+    \ 000008 656e203c
+    \ 00000c 6f6c643e
+    \ 000010 203c6e65
+    \ 000014 773e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Usage: run <filename>`
+    \ 000000          `_StringLiteral_Usage: run <filename>`:
+    \ 000000 55736167             .byte   85,115,97,103,101,58,32,114,117,110,32,60,102,105,108,101,110,97,109,101,62,0
+    \ 000004 653a2072
+    \ 000008 756e203c
+    \ 00000c 66696c65
+    \ 000010 6e616d65
+    \ 000014 3e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Usage: set-datetime YY MM DD HH MM SS`
+    \ 000000          `_StringLiteral_Usage: set-datetime YY MM DD HH MM SS`:
+    \ 000000 55736167             .byte   85,115,97,103,101,58,32,115,101,116,45,100,97,116,101,116,105,109,101,32,89,89,32,77,77,32,68,68,32,72,72,32,77,77,32,83,83,0
+    \ 000004 653a2073
+    \ 000008 65742d64
+    \ 00000c 61746574
+    \ 000010 696d6520
+    \ 000014 5959204d
+    \ 000018 4d204444
+    \ 00001c 20484820
+    \ 000020 4d4d2053
+    \ 000024 5300
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Usage: type <filename>`
+    \ 000000          `_StringLiteral_Usage: type <filename>`:
+    \ 000000 55736167             .byte   85,115,97,103,101,58,32,116,121,112,101,32,60,102,105,108,101,110,97,109,101,62,0
+    \ 000004 653a2074
+    \ 000008 79706520
+    \ 00000c 3c66696c
+    \ 000010 656e616d
+    \ 000014 653e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_Welcome to the R265Nibbler Shell version `
+    \ 000000          `_StringLiteral_Welcome to the R265Nibbler Shell version `:
+    \ 000000 57656c63             .byte   87,101,108,99,111,109,101,32,116,111,32,116,104,101,32,82,50,54,53,78,105,98,98,108,101,114,32,83,104,101,108,108,32,118,101,114,115,105,111,110,32,0
+    \ 000004 6f6d6520
+    \ 000008 746f2074
+    \ 00000c 68652052
+    \ 000010 3236354e
+    \ 000014 6962626c
+    \ 000018 65722053
+    \ 00001c 68656c6c
+    \ 000020 20766572
+    \ 000024 73696f6e
+    \ 000028 2000
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_cls
+    \ 000000          _StringLiteral_cls:
+    \ 000000 636c7300             .byte   99,108,115,0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_copy
+    \ 000000          _StringLiteral_copy:
+    \ 000000 636f7079             .byte   99,111,112,121,0
+    \ 000004 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_datetime
+    \ 000000          _StringLiteral_datetime:
+    \ 000000 64617465             .byte   100,97,116,101,116,105,109,101,0
+    \ 000004 74696d65
+    \ 000008 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_del
+    \ 000000          _StringLiteral_del:
+    \ 000000 64656c00             .byte   100,101,108,0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_dir
+    \ 000000          _StringLiteral_dir:
+    \ 000000 64697200             .byte   100,105,114,0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_exit
+    \ 000000          _StringLiteral_exit:
+    \ 000000 65786974             .byte   101,120,105,116,0
+    \ 000004 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_gfxTest
+    \ 000000          _StringLiteral_gfxTest:
+    \ 000000 67667854             .byte   103,102,120,84,101,115,116,0
+    \ 000004 65737400
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_help
+    \ 000000          _StringLiteral_help:
+    \ 000000 68656c70             .byte   104,101,108,112,0
+    \ 000004 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_load
+    \ 000000          _StringLiteral_load:
+    \ 000000 6c6f6164             .byte   108,111,97,100,0
+    \ 000004 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_memdump
+    \ 000000          _StringLiteral_memdump:
+    \ 000000 6d656d64             .byte   109,101,109,100,117,109,112,0
+    \ 000004 756d7000
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_ren
+    \ 000000          _StringLiteral_ren:
+    \ 000000 72656e00             .byte   114,101,110,0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_runbin
+    \ 000000          _StringLiteral_runbin:
+    \ 000000 72756e62             .byte   114,117,110,98,105,110,0
+    \ 000004 696e00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_runhex
+    \ 000000          _StringLiteral_runhex:
+    \ 000000 72756e68             .byte   114,117,110,104,101,120,0
+    \ 000004 657800
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak `_StringLiteral_set-datetime`
+    \ 000000          `_StringLiteral_set-datetime`:
+    \ 000000 7365742d             .byte   115,101,116,45,100,97,116,101,116,105,109,101,0
+    \ 000004 64617465
+    \ 000008 74696d65
+    \ 00000c 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_type
+    \ 000000          _StringLiteral_type:
+    \ 000000 74797065             .byte   116,121,112,101,0
+    \ 000004 00
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .pubweak _StringLiteral_ver
+    \ 000000          _StringLiteral_ver:
+    \ 000000 76657200             .byte   118,101,114,0
+0533                          
+0534                          // Other background tasks here
+0535                      }
+0536                  }
+
+##########################
+#                        #
+# Memory sizes (decimal) #
+#                        #
+##########################
+
+Executable              (Text): 2421 bytes
+Zero initialized         (BSS):   90 bytes
+Constant                      : 1071 bytes
+Constant         __far        :   17 bytes
