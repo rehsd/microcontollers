@@ -1,0 +1,123 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "shell": {
+      "executable": "cmd.exe",
+      "args": ["/d", "/c"]
+    }
+  },
+  "tasks": [
+
+    // ******************* Common build tasks ********************
+    {
+      "label": "calypsi-clean",
+      "type": "shell",
+      "command": "if exist \"${fileDirname}\\build\" del /q \"${fileDirname}\\build\\*\"",
+      "problemMatcher": [],
+      "group": "build"
+    },
+
+    // ***************** Shell build tasks **********************
+    {
+      "label": "compile-shell",
+      "type": "shell",
+      "command": "cc65816.exe --code-model=large --data-model=small -c shell.c -o build/shell.o --list-file=build/shell_assembled.lst",
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "compile-graphics",
+      "type": "shell",
+      "command": "cc65816.exe --code-model=large --data-model=small -c graphics.c -o build/graphics.o --list-file=build/graphics_assembled.lst",
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "compile-util",
+      "type": "shell",
+      "command": "cc65816.exe --code-model=large --data-model=small -c util.c -o build/util.o --list-file=build/util_assembled.lst",
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "compile-os",
+      "type": "shell",
+      "command": "cc65816.exe --code-model=large --data-model=small -c os.c -o build/os.o --list-file=build/os_assembled.lst",
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "compile-filesys",
+      "type": "shell",
+      "command": "cc65816.exe --code-model=large --data-model=small -c filesys.c -o build/filesys.o --list-file=build/filesys_assembled.lst",
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "calypsi-link",
+      "type": "shell",
+      "command": "ln65816.exe --output-format=intel-hex --hosted build/shell.o build/graphics.o build/util.o build/os.o build/filesys.o rules.scm -o build/shell.hex --list-file=build/shell_linked.lst",
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "calypsi-shell-all",
+      "dependsOn": [
+        "calypsi-clean",
+        "compile-shell",
+        "compile-graphics",
+        "compile-util",
+        "compile-os",
+        "compile-filesys",
+        "calypsi-link"
+      ],
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+
+    // ************ App build tasks *********************
+
+    {
+      "label": "app-compile",
+      "type": "shell",
+      "command": "cc65816.exe --code-model=large --data-model=large -c gfxTest.c -o build/gfxTest.o",
+      "options": { "cwd": "${fileDirname}" },
+      "dependsOn": "1. Clean Build Dir",
+      "problemMatcher": []
+    },
+    {
+      "label": "app-link",
+      "type": "shell",
+      "command": "ln65816.exe --output-format=raw --raw-multiple-memories --no-automatic-placement-rules --program-start=app_init --root-symbol=app_init --no-data-init-table-section build/gfxTest.o rules.scm -o build/gfxTest.rom --list-file=build/gfxTest_linked.lst",
+      "options": { "cwd": "${fileDirname}" },
+      "dependsOn": "2. Compile gfxTest",
+      "problemMatcher": []
+    },
+    {
+      "label": "app-rename",
+      "type": "shell",
+      "command": "ren build\\AppEntry.raw gfxTest.bin",
+      "options": { "cwd": "${fileDirname}" },
+      "dependsOn": "3. Link gfxTest",
+      "problemMatcher": []
+    },
+    {
+      "label": "calypsi-app-all",
+      "dependsOn": [
+        "calypsi-clean",
+        "app-compile",
+        "app-link",
+        "app-rename"
+      ],
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+
+  ]
+}

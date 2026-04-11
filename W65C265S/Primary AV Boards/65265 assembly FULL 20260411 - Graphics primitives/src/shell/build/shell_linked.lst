@@ -1,0 +1,2391 @@
+###############################################################################
+#                                                                             #
+# Calypsi linker for 65816                                       version 5.15 #
+#                                                       11/Apr/2026  11:00:06 #
+# Command line: --output-format=intel-hex --hosted build/shell.o              #
+#               build/graphics.o build/util.o build/os.o build/filesys.o      #
+#               rules.scm -o build/shell.hex                                  #
+#               --list-file=build/shell_linked.lst                            #
+#                                                                             #
+###############################################################################
+
+####################
+#                  #
+# Memories summary #
+#                  #
+####################
+
+Name                          Range         Size    Used    Checksum  Largest unallocated
+-----------------------------------------------------------------------------------------
+APP_ZP-tiny                   002000-0020ff 000100    7.8%  none      0000ec
+APP_RAM_DATA                  002100-005fff 003f00   48.1%  none      0020ba
+  > APP_RAM_DATA-nobits       002100-00320a 00110b  100.0%  none      none
+  > APP_RAM_DATA-bits         00320b-00320c 000002  100.0%  none      none
+  > APP_RAM_DATA-cbits        00320d-003f09 000cfd  100.0%  none      none
+  > APP_RAM_DATA-code         003f0a-003f45 00003c  100.0%  none      0020ba
+APP_ZP                        002100        000000    0.0%  none      000000
+CS4B_FLASH                    008000-00ffe3 007fe4    0.0%  none      008000
+CS4B_FLASH-vector             00ffe4-00ffff 00001c    7.1%  none      007ffc
+APP_RAM_CODE-01               010000-01ffff 010000   28.1%  none      00b82a
+  > APP_RAM_CODE-01-far-cbits 010000-01001e 00001f  100.0%  none      none
+  > APP_RAM_CODE-01-farcode   01001f-0147d5 0047b7  100.0%  none      00b82a
+APP_RAM_CODE-02               020000-02ffff 010000    0.0%  none      00fff6
+  > APP_RAM_CODE-02-far-cbits 020000-020009 00000a  100.0%  none      00fff6
+
+
+####################
+#                  #
+# Sections summary #
+#                  #
+####################
+
+Name            Range          Size    Memory                    Fragments
+--------------------------------------------------------------------------
+registers       002000-002013  000014  APP_ZP-tiny               1
+zdata           002100-00220a  00010b  APP_RAM_DATA-nobits       27
+stack           00220b-00320a  001000  APP_RAM_DATA-nobits       1
+data            00320b-00320c  000002  APP_RAM_DATA-bits         1
+cdata           00320d-003f09  000cfd  APP_RAM_DATA-cbits        75
+code            003f0a-003f45  00003c  APP_RAM_DATA-code         3
+reset           00fffc-00fffd  000002  CS4B_FLASH-vector         1
+switch          010000-01000d  00000e  APP_RAM_CODE-01-far-cbits 1
+cfar            01000e-01001e  000011  APP_RAM_CODE-01-far-cbits 1
+farcode         01001f-0147d5  0047b7  APP_RAM_CODE-01-farcode   110
+data_init_table 020000-020009  00000a  APP_RAM_CODE-02-far-cbits 1
+
+
+###################
+#                 #
+# Placement rules #
+#                 #
+###################
+
+Name                        Address range  Key
+----------------------------------------------------------------------
+APP_RAM_CODE-01             010000-01ffff  Far
+  APP_RAM_CODE-01-farcode   010000-01ffff  FarFunction and TEXT
+    > farcode
+  APP_RAM_CODE-01-far-cbits 010000-01ffff  Far and RODATA
+    > data_init_table, switch and cfar
+APP_RAM_CODE-02             020000-02ffff  Far
+  APP_RAM_CODE-02-farcode   020000-02ffff  FarFunction and TEXT
+    > farcode
+  APP_RAM_CODE-02-far-cbits 020000-02ffff  Far and RODATA
+    > data_init_table, switch and cfar
+APP_RAM_DATA                002100-005fff  Plain
+  APP_RAM_DATA-nobits       002100-005fff  Plain and BSS
+    > zdata
+    > stack
+  APP_RAM_DATA-bits         002100-005fff  Plain and DATA
+    > data
+  APP_RAM_DATA-cbits        002100-005fff  Plain and RODATA
+    > data_init_table and cdata
+  APP_RAM_DATA-code         002100-005fff  PlainFunction and TEXT
+    > code
+APP_ZP                      002100-0020ff  Plain
+  APP_ZP-bits               002100-0020ff  Plain and DATA
+    > data
+APP_ZP-tiny                 002000-0020ff  Tiny and BSS
+  > registers
+CS4B_FLASH-vector           00ffe4-00ffff  Plain
+  > (reset 00fffc)
+CS4B_FLASH                  008000-00ffe3  Plain
+  CS4B_FLASH-cbits          008000-00ffe3  Plain and RODATA
+    > data_init_table and cdata
+  CS4B_FLASH-code           008000-00ffe3  PlainFunction and TEXT
+    > code
+
+Name  Size   Align
+-------------------
+stack 001000 no
+
+Name             Memory      Offset
+------------------------------------
+_DirectPageStart APP_ZP-tiny 000000
+
+################
+#              #
+# Object files #
+#              #
+################
+
+Unit Filename          Archive
+-----------------------------------
+  0  build/shell.o     -
+          >  cdata   0003fa
+          >  farcode 000984
+          >  zdata   000042
+  1  build/graphics.o  -
+          >  cdata   00085a
+          >  data    000002
+          >  farcode 000eeb
+          >  switch  00000e
+  2  build/util.o      -
+          >  cdata   000011
+          >  cfar    000011
+          >  farcode 0005f3
+  3  build/os.o        -
+          >  farcode 0003ec
+  4  build/filesys.o   -
+          >  cdata   000098
+          >  farcode 0021cf
+          >  zdata   000041
+  6  cstartup.o        clib-lc-sd.a
+          # picked based on cstartup=normal (built-in default)
+          >  code    00003c
+          >  farcode 000001
+          >  reset   000002
+  7  exit.o            clib-lc-sd.a
+          # picked based on exit=stdexit (built-in default)
+          >  farcode 000053
+  9  controlFlow.o     clib-lc-sd.a
+          >  farcode 00000e
+ 10  pseudoRegisters.o clib-lc-sd.a
+          >  registers 000014
+ 11  atexit.o          clib-lc-sd.a
+          >  zdata 000082
+ 12  exitC99.o         clib-lc-sd.a
+          >  farcode 000005
+ 13  defaultExit.o     clib-lc-sd.a
+          >  farcode 000001
+ 15  streamlist.o      clib-lc-sd.a
+          >  zdata 000004
+ 16  integer.o         clib-lc-sd.a
+          >  farcode 0000e1
+ 17  lib_strtok.o      clib-lc-sd.a
+          >  farcode 00000a
+          >  zdata   000002
+ 18  lib_strtokr.o     clib-lc-sd.a
+          >  farcode 0000c1
+ 19  lib_strchr.o      clib-lc-sd.a
+          >  farcode 00001e
+ 20  lib_strcmp.o      clib-lc-sd.a
+          >  farcode 000052
+ 21  initialize.o      clib-lc-sd.a
+          # picked based on initialize=normal (built-in default)
+          >  farcode 000087
+ 23  memset_far.o      clib-lc-sd.a
+          >  farcode 000048
+ 24  memcpy_far.o      clib-lc-sd.a
+          >  farcode 000047
+
+###################
+#                 #
+# Cross reference #
+#                 #
+###################
+
+`?L174` in section 'switch'  placed at address 010000-01000d of size 00000e
+(build/graphics.o unit 1 section index 33)
+    References:
+        rainbow332 in (build/graphics.o unit 1 section index 31)
+
+hex_digits_far in section 'cfar'
+ placed at address 01000e-01001e of size 000011
+(build/util.o unit 2 section index 18)
+    Defines:
+        hex_digits_far = 01000e
+    Referenced from:
+        print_hex8 (build/util.o unit 2 section index 7)
+        print_hex_serial (build/util.o unit 2 section index 10)
+
+_Stub_exit in section 'farcode'  placed at address 01001f-01001f of size 000001
+(defaultExit.o (from clib-lc-sd.a) unit 13 section index 2)
+    Defines:
+        _Stub_exit = 01001f
+    Referenced from:
+        _Exit (exitC99.o (from clib-lc-sd.a) unit 12 section index 2)
+
+__low_level_init in section 'farcode'
+ placed at address 010020-010020 of size 000001
+(cstartup.o (from clib-lc-sd.a) unit 6 section index 8)
+    Defines:
+        __low_level_init = 010020
+    Referenced from:
+        __program_start (cstartup.o (from clib-lc-sd.a) unit 6 section index 2)
+
+os_newline in section 'farcode'  placed at address 010021-010023 of size 000003
+(build/os.o unit 3 section index 8)
+    Defines:
+        os_newline = 010021
+    Referenced from:
+        (build/shell.o unit 0 section index 14)
+        (build/shell.o unit 0 section index 20)
+        (build/shell.o unit 0 section index 21)
+        (build/shell.o unit 0 section index 22)
+        (build/shell.o unit 0 section index 23)
+        (build/shell.o unit 0 section index 26)
+        (build/shell.o unit 0 section index 30)
+        (build/shell.o unit 0 section index 33)
+        main (build/shell.o unit 0 section index 34)
+        list_root_directory (build/filesys.o unit 4 section index 34)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+        delete_file (build/filesys.o unit 4 section index 36)
+
+os_c_return in section 'farcode'
+ placed at address 010024-010026 of size 000003
+(build/os.o unit 3 section index 12)
+    Defines:
+        os_c_return = 010024
+    Referenced from:
+        (build/shell.o unit 0 section index 19)
+
+os_clear_screen in section 'farcode'
+ placed at address 010027-010029 of size 000003
+(build/os.o unit 3 section index 14)
+    Defines:
+        os_clear_screen = 010027
+    Referenced from:
+        (build/shell.o unit 0 section index 16)
+        (build/shell.o unit 0 section index 25)
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+os_newline_serial in section 'farcode'
+ placed at address 01002a-01002c of size 000003
+(build/os.o unit 3 section index 16)
+    Defines:
+        os_newline_serial = 01002a
+    Referenced from:
+        (build/shell.o unit 0 section index 21)
+        main (build/shell.o unit 0 section index 34)
+
+_Exit in section 'farcode'  placed at address 01002d-010031 of size 000005
+(exitC99.o (from clib-lc-sd.a) unit 12 section index 2)
+    Defines:
+        _Exit = 01002d
+    References:
+        _Stub_exit in (defaultExit.o (from clib-lc-sd.a) unit 13 section index 2)
+    Referenced from:
+        exit (exit.o (from clib-lc-sd.a) unit 7 section index 2)
+
+diagonalColors in section 'farcode'
+ placed at address 010032-010039 of size 000008
+(build/graphics.o unit 1 section index 20)
+    Defines:
+        diagonalColors = 010032
+    References:
+        gfxFrame1 in (build/graphics.o unit 1 section index 17)
+    Referenced from:
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+cmd_datetime in section 'farcode'
+ placed at address 01003a-010042 of size 000009
+(build/shell.o unit 0 section index 24)
+    References:
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+
+os_print_char in section 'farcode'
+ placed at address 010043-01004c of size 00000a
+(build/os.o unit 3 section index 7)
+    Defines:
+        os_print_char = 010043
+    Referenced from:
+        (build/shell.o unit 0 section index 14)
+        (build/shell.o unit 0 section index 16)
+        (build/shell.o unit 0 section index 25)
+        (build/shell.o unit 0 section index 33)
+        main (build/shell.o unit 0 section index 34)
+        print_dec8 (build/util.o unit 2 section index 4)
+        print_dec_year (build/util.o unit 2 section index 6)
+        print_hex8 (build/util.o unit 2 section index 7)
+        ... 6 more
+
+os_newline_with_prompt in section 'farcode'
+ placed at address 01004d-010056 of size 00000a
+(build/os.o unit 3 section index 9)
+    Defines:
+        os_newline_with_prompt = 01004d
+    References:
+        os_print_char in (build/os.o unit 3 section index 7)
+    Referenced from:
+        (build/shell.o unit 0 section index 15)
+        (build/shell.o unit 0 section index 17)
+        (build/shell.o unit 0 section index 18)
+        (build/shell.o unit 0 section index 20)
+        (build/shell.o unit 0 section index 21)
+        (build/shell.o unit 0 section index 23)
+        (build/shell.o unit 0 section index 24)
+        (build/shell.o unit 0 section index 26)
+        ... 5 more
+
+os_print_char_serial in section 'farcode'
+ placed at address 010057-010060 of size 00000a
+(build/os.o unit 3 section index 15)
+    Defines:
+        os_print_char_serial = 010057
+    Referenced from:
+        (build/shell.o unit 0 section index 21)
+        print_hex_serial (build/util.o unit 2 section index 10)
+        os_puts_serial (build/os.o unit 3 section index 17)
+
+os_kbd_get_char in section 'farcode'
+ placed at address 010061-01006a of size 00000a
+(build/os.o unit 3 section index 18)
+    Defines:
+        os_kbd_get_char = 010061
+    Referenced from:
+        (build/shell.o unit 0 section index 33)
+        os_kbd_wait_for_key (build/os.o unit 3 section index 19)
+
+os_set_char_color in section 'farcode'
+ placed at address 01006b-010074 of size 00000a
+(build/os.o unit 3 section index 21)
+    Defines:
+        os_set_char_color = 01006b
+    Referenced from:
+        show_wait_for_key_box (build/graphics.o unit 1 section index 23)
+        map_test (build/graphics.o unit 1 section index 28)
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+sdcard_init in section 'farcode'
+ placed at address 010075-01007e of size 00000a
+(build/filesys.o unit 4 section index 26)
+    Defines:
+        sdcard_init = 010075
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+
+strtok in section 'farcode'  placed at address 01007f-010088 of size 00000a
+(lib_strtok.o (from clib-lc-sd.a) unit 17 section index 3)
+    Defines:
+        strtok = 01007f
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        strtok_r in (lib_strtokr.o (from clib-lc-sd.a) unit 18 section index 2)
+    Referenced from:
+        (build/shell.o unit 0 section index 27)
+        (build/shell.o unit 0 section index 28)
+
+cmd_help in section 'farcode'  placed at address 010089-010094 of size 00000c
+(build/shell.o unit 0 section index 15)
+    References:
+        `_StringLiteral_[65,118,97,105,108,97,98,108,101,58,32,104,101,108,112,32,40,63,41,44,32,99,108,115,44,32,118,101,114,44,32,100,105,114,44,32,100,101,108,44,32,99,111,112,121,44,32,114,101,110,44,13,32,101,120,105,116,44,32,116,121,112,101,44,32,114,117,110,104,101,120,44,32,109,101,109,100,117,109,112,44,32,108,111,97,100,44,32,100,97,116,101,116,105,109,101,44,13,32,103,102,120,84,101,115,116,44,32,115,101,116,45,100,97,116,101,116,105,109,101,44,32,114,117,110,98,105,110]` in (build/shell.o unit 0 section index 40)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+
+cmd_cls in section 'farcode'  placed at address 010095-0100a0 of size 00000c
+(build/shell.o unit 0 section index 16)
+    References:
+        os_clear_screen in (build/os.o unit 3 section index 14)
+        os_print_char in (build/os.o unit 3 section index 7)
+
+cmd_exit in section 'farcode'  placed at address 0100a1-0100ac of size 00000c
+(build/shell.o unit 0 section index 19)
+    References:
+        `_StringLiteral_Exiting shell...` in (build/shell.o unit 0 section index 50)
+        os_c_return in (build/os.o unit 3 section index 12)
+        os_puts in (build/os.o unit 3 section index 13)
+
+_JmpIndLong in section 'farcode'
+ placed at address 0100ad-0100ba of size 00000e
+(controlFlow.o (from clib-lc-sd.a) unit 9 section index 3)
+    Defines:
+        _JmpIndLong = 0100ad
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        execute_command (build/shell.o unit 0 section index 32)
+        exit (exit.o (from clib-lc-sd.a) unit 7 section index 2)
+
+`?L38` in section 'farcode'  placed at address 0100bb-0100c8 of size 00000e
+(lib_strtokr.o (from clib-lc-sd.a) unit 18 section index 3)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        strchr in (lib_strchr.o (from clib-lc-sd.a) unit 19 section index 2)
+
+cmd_gfxTest in section 'farcode'
+ placed at address 0100c9-0100d8 of size 000010
+(build/shell.o unit 0 section index 25)
+    References:
+        graphics_test in (build/graphics.o unit 1 section index 29)
+        os_clear_screen in (build/os.o unit 3 section index 14)
+        os_print_char in (build/os.o unit 3 section index 7)
+
+p64_toggle in section 'farcode'  placed at address 0100d9-0100ea of size 000012
+(build/shell.o unit 0 section index 31)
+    Defines:
+        p64_toggle = 0100d9
+    Referenced from:
+        main (build/shell.o unit 0 section index 34)
+
+cmd_ver in section 'farcode'  placed at address 0100eb-0100fd of size 000013
+(build/shell.o unit 0 section index 17)
+    References:
+        `_StringLiteral_0.2` in (build/shell.o unit 0 section index 38)
+        `_StringLiteral_R265Nibbler Shell version ` in (build/shell.o unit 0 section index 61)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+
+sdcard_read_sector in section 'farcode'
+ placed at address 0100fe-010110 of size 000013
+(build/filesys.o unit 4 section index 27)
+    Defines:
+        sdcard_read_sector = 0100fe
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        list_root_directory (build/filesys.o unit 4 section index 34)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+        delete_file (build/filesys.o unit 4 section index 36)
+        allocate_cluster (build/filesys.o unit 4 section index 40)
+        load_hex_from_sd (build/filesys.o unit 4 section index 43)
+        create_directory_entry (build/filesys.o unit 4 section index 46)
+        rename_file (build/filesys.o unit 4 section index 47)
+        copy_file (build/filesys.o unit 4 section index 48)
+        load_bin_from_sd (build/filesys.o unit 4 section index 49)
+
+sdcard_write_sector in section 'farcode'
+ placed at address 010111-010123 of size 000013
+(build/filesys.o unit 4 section index 28)
+    Defines:
+        sdcard_write_sector = 010111
+    Referenced from:
+        delete_file (build/filesys.o unit 4 section index 36)
+        allocate_cluster (build/filesys.o unit 4 section index 40)
+        create_directory_entry (build/filesys.o unit 4 section index 46)
+        rename_file (build/filesys.o unit 4 section index 47)
+        copy_file (build/filesys.o unit 4 section index 48)
+
+cmd_dir in section 'farcode'  placed at address 010124-01013e of size 00001b
+(build/shell.o unit 0 section index 18)
+    References:
+        `_StringLiteral_FAT16 Init Failed!` in (build/shell.o unit 0 section index 51)
+        fat_init in (build/filesys.o unit 4 section index 33)
+        list_root_directory in (build/filesys.o unit 4 section index 34)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+
+delayms in section 'farcode'  placed at address 01013f-01015a of size 00001c
+(build/util.o unit 2 section index 3)
+    Defines:
+        delayms = 01013f
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+        map_test (build/graphics.o unit 1 section index 28)
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+rd16 in section 'farcode'  placed at address 01015b-010178 of size 00001e
+(build/filesys.o unit 4 section index 31)
+    Defines:
+        rd16 = 01015b
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        copy_file (build/filesys.o unit 4 section index 48)
+
+strchr in section 'farcode'  placed at address 010179-010196 of size 00001e
+(lib_strchr.o (from clib-lc-sd.a) unit 19 section index 2)
+    Defines:
+        strchr = 010179
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        (lib_strtokr.o (from clib-lc-sd.a) unit 18 section index 3)
+
+copy512 in section 'farcode'  placed at address 010197-0101b7 of size 000021
+(build/filesys.o unit 4 section index 39)
+    Defines:
+        copy512 = 010197
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        copy_file (build/filesys.o unit 4 section index 48)
+
+cmd_type in section 'farcode'  placed at address 0101b8-0101dc of size 000025
+(build/shell.o unit 0 section index 20)
+    References:
+        `_StringLiteral_Usage: type <filename>` in (build/shell.o unit 0 section index 72)
+        os_newline in (build/os.o unit 3 section index 8)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+        print_file_contents in (build/filesys.o unit 4 section index 35)
+
+os_puts in section 'farcode'  placed at address 0101dd-010203 of size 000027
+(build/os.o unit 3 section index 13)
+    Defines:
+        os_puts = 0101dd
+    References:
+        os_print_char in (build/os.o unit 3 section index 7)
+    Referenced from:
+        (build/shell.o unit 0 section index 14)
+        (build/shell.o unit 0 section index 15)
+        (build/shell.o unit 0 section index 17)
+        (build/shell.o unit 0 section index 18)
+        (build/shell.o unit 0 section index 19)
+        (build/shell.o unit 0 section index 20)
+        (build/shell.o unit 0 section index 21)
+        (build/shell.o unit 0 section index 22)
+        ... 15 more
+
+os_puts_serial in section 'farcode'
+ placed at address 010204-01022a of size 000027
+(build/os.o unit 3 section index 17)
+    Defines:
+        os_puts_serial = 010204
+    References:
+        os_print_char_serial in (build/os.o unit 3 section index 15)
+    Referenced from:
+        main (build/shell.o unit 0 section index 34)
+
+bcd_to_bin in section 'farcode'  placed at address 01022b-010254 of size 00002a
+(build/util.o unit 2 section index 11)
+    Defines:
+        bcd_to_bin = 01022b
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 16 section index 2)
+    Referenced from:
+        get_system_time_fat (build/filesys.o unit 4 section index 44)
+
+os_set_char_xy in section 'farcode'
+ placed at address 010255-010282 of size 00002e
+(build/os.o unit 3 section index 20)
+    Defines:
+        os_set_char_xy = 010255
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        show_wait_for_key_box (build/graphics.o unit 1 section index 23)
+        update_score (build/graphics.o unit 1 section index 27)
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+os_tile_backup_16 in section 'farcode'
+ placed at address 010283-0102b0 of size 00002e
+(build/os.o unit 3 section index 24)
+    Defines:
+        os_tile_backup_16 = 010283
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+
+os_tile_backup_32 in section 'farcode'
+ placed at address 0102b1-0102de of size 00002e
+(build/os.o unit 3 section index 25)
+    Defines:
+        os_tile_backup_32 = 0102b1
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+
+os_tile_restore_16 in section 'farcode'
+ placed at address 0102df-01030c of size 00002e
+(build/os.o unit 3 section index 26)
+    Defines:
+        os_tile_restore_16 = 0102df
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+
+os_tile_restore_32 in section 'farcode'
+ placed at address 01030d-01033a of size 00002e
+(build/os.o unit 3 section index 27)
+    Defines:
+        os_tile_restore_32 = 01030d
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+
+_Mul16 in section 'farcode'  placed at address 01033b-01036a of size 000030
+(integer.o (from clib-lc-sd.a) unit 16 section index 2)
+    Defines:
+        _Mul16 = 01033b
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        (build/shell.o unit 0 section index 29)
+        execute_command (build/shell.o unit 0 section index 32)
+        bcd_to_bin (build/util.o unit 2 section index 11)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+        load_hex_from_sd (build/filesys.o unit 4 section index 43)
+        copy_file (build/filesys.o unit 4 section index 48)
+        load_bin_from_sd (build/filesys.o unit 4 section index 49)
+
+rgb332 in section 'farcode'  placed at address 01036b-01039c of size 000032
+(build/graphics.o unit 1 section index 30)
+    Defines:
+        rgb332 = 01036b
+    Referenced from:
+        rainbow332 (build/graphics.o unit 1 section index 31)
+
+get_hex_pair in section 'farcode'
+ placed at address 01039d-0103dd of size 000041
+(build/filesys.o unit 4 section index 45)
+    Defines:
+        get_hex_pair = 01039d
+    References:
+        hex_to_byte in (build/util.o unit 2 section index 12)
+    Referenced from:
+        load_hex_from_sd (build/filesys.o unit 4 section index 43)
+
+print_hex8 in section 'farcode'  placed at address 0103de-01041f of size 000042
+(build/util.o unit 2 section index 7)
+    Defines:
+        print_hex8 = 0103de
+    References:
+        hex_digits_far in (build/util.o unit 2 section index 18)
+        os_print_char in (build/os.o unit 3 section index 7)
+    Referenced from:
+        (build/shell.o unit 0 section index 27)
+        (build/shell.o unit 0 section index 28)
+        (build/shell.o unit 0 section index 30)
+
+print_hex_serial in section 'farcode'
+ placed at address 010420-010461 of size 000042
+(build/util.o unit 2 section index 10)
+    Defines:
+        print_hex_serial = 010420
+    References:
+        hex_digits_far in (build/util.o unit 2 section index 18)
+        os_print_char_serial in (build/os.o unit 3 section index 15)
+    Referenced from:
+        (build/shell.o unit 0 section index 21)
+
+os_kbd_wait_for_key in section 'farcode'
+ placed at address 010462-0104a4 of size 000043
+(build/os.o unit 3 section index 19)
+    Defines:
+        os_kbd_wait_for_key = 010462
+    References:
+        os_kbd_get_char in (build/os.o unit 3 section index 18)
+    Referenced from:
+        show_wait_for_key_box (build/graphics.o unit 1 section index 23)
+
+print_dec8 in section 'farcode'  placed at address 0104a5-0104e8 of size 000044
+(build/util.o unit 2 section index 4)
+    Defines:
+        print_dec8 = 0104a5
+    References:
+        _Div16 in (integer.o (from clib-lc-sd.a) unit 16 section index 7)
+        _Mod16 in (integer.o (from clib-lc-sd.a) unit 16 section index 8)
+        os_print_char in (build/os.o unit 3 section index 7)
+    Referenced from:
+        (build/shell.o unit 0 section index 14)
+        list_root_directory (build/filesys.o unit 4 section index 34)
+
+__memcpy_far in section 'farcode'
+ placed at address 0104e9-01052f of size 000047
+(memcpy_far.o (from clib-lc-sd.a) unit 24 section index 2)
+    Defines:
+        __memcpy_far = 0104e9
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        __initialize_sections (initialize.o (from clib-lc-sd.a) unit 21 section index 2)
+
+os_draw_sprite32 in section 'farcode'
+ placed at address 010530-010577 of size 000048
+(build/os.o unit 3 section index 22)
+    Defines:
+        os_draw_sprite32 = 010530
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+
+os_draw_sprite16 in section 'farcode'
+ placed at address 010578-0105bf of size 000048
+(build/os.o unit 3 section index 23)
+    Defines:
+        os_draw_sprite16 = 010578
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+        map_test (build/graphics.o unit 1 section index 28)
+
+__memset_far in section 'farcode'
+ placed at address 0105c0-010607 of size 000048
+(memset_far.o (from clib-lc-sd.a) unit 23 section index 2)
+    Defines:
+        __memset_far = 0105c0
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        __initialize_sections (initialize.o (from clib-lc-sd.a) unit 21 section index 2)
+
+strcmp in section 'farcode'  placed at address 010608-010659 of size 000052
+(lib_strcmp.o (from clib-lc-sd.a) unit 20 section index 2)
+    Defines:
+        strcmp = 010608
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        execute_command (build/shell.o unit 0 section index 32)
+
+exit in section 'farcode'  placed at address 01065a-0106ac of size 000053
+(exit.o (from clib-lc-sd.a) unit 7 section index 2)
+    Defines:
+        exit = 01065a
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _Exit in (exitC99.o (from clib-lc-sd.a) unit 12 section index 2)
+        _ExitCloseStreams in (streamlist.o (from clib-lc-sd.a) unit 15 section index 2)
+        _JmpIndLong in (controlFlow.o (from clib-lc-sd.a) unit 9 section index 3)
+        __atexit in (atexit.o (from clib-lc-sd.a) unit 11 section index 2)
+        __atexit_index in (atexit.o (from clib-lc-sd.a) unit 11 section index 3)
+    Referenced from:
+        (cstartup.o (from clib-lc-sd.a) unit 6 section index 6)
+
+main in section 'farcode'  placed at address 0106ad-010701 of size 000055
+(build/shell.o unit 0 section index 34)
+    Defines:
+        main = 0106ad
+    References:
+        `_StringLiteral_0.2` in (build/shell.o unit 0 section index 38)
+        `_StringLiteral_FAT16 Init Failed!` in (build/shell.o unit 0 section index 51)
+        `_StringLiteral_Shell loaded` in (build/shell.o unit 0 section index 63)
+        `_StringLiteral_Welcome to the R265Nibbler Shell version ` in (build/shell.o unit 0 section index 73)
+        fat_init in (build/filesys.o unit 4 section index 33)
+        os_newline in (build/os.o unit 3 section index 8)
+        os_newline_serial in (build/os.o unit 3 section index 16)
+        os_print_char in (build/os.o unit 3 section index 7)
+        os_puts in (build/os.o unit 3 section index 13)
+        os_puts_serial in (build/os.o unit 3 section index 17)
+        p64_toggle in (build/shell.o unit 0 section index 31)
+    Referenced from:
+        (cstartup.o (from clib-lc-sd.a) unit 6 section index 6)
+
+print_dec_year in section 'farcode'
+ placed at address 010702-01075b of size 00005a
+(build/util.o unit 2 section index 6)
+    Defines:
+        print_dec_year = 010702
+    References:
+        _UDivMod16 in (integer.o (from clib-lc-sd.a) unit 16 section index 6)
+        os_print_char in (build/os.o unit 3 section index 7)
+    Referenced from:
+        (build/shell.o unit 0 section index 14)
+        list_root_directory (build/filesys.o unit 4 section index 34)
+
+dec_to_bcd in section 'farcode'  placed at address 01075c-0107b7 of size 00005c
+(build/util.o unit 2 section index 16)
+    Defines:
+        dec_to_bcd = 01075c
+    Referenced from:
+        (build/shell.o unit 0 section index 29)
+
+draw_brick in section 'farcode'  placed at address 0107b8-010815 of size 00005e
+(build/graphics.o unit 1 section index 24)
+    Defines:
+        draw_brick = 0107b8
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        os_draw_rectangle in (build/os.o unit 3 section index 2)
+    Referenced from:
+        map_test (build/graphics.o unit 1 section index 28)
+
+delay in section 'farcode'  placed at address 010816-010874 of size 00005f
+(build/util.o unit 2 section index 2)
+    Defines:
+        delay = 010816
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        draw_logo_32_scaled_4x (build/graphics.o unit 1 section index 15)
+        gfxFrame1 (build/graphics.o unit 1 section index 17)
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+hex_to_byte in section 'farcode'
+ placed at address 010875-0108d7 of size 000063
+(build/util.o unit 2 section index 12)
+    Defines:
+        hex_to_byte = 010875
+    Referenced from:
+        get_hex_pair (build/filesys.o unit 4 section index 45)
+
+os_draw_circle in section 'farcode'
+ placed at address 0108d8-01093a of size 000063
+(build/os.o unit 3 section index 4)
+    Defines:
+        os_draw_circle = 0108d8
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        draw_cloud (build/graphics.o unit 1 section index 26)
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+os_draw_diamond in section 'farcode'
+ placed at address 01093b-01099d of size 000063
+(build/os.o unit 3 section index 6)
+    Defines:
+        os_draw_diamond = 01093b
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+int_to_ascii in section 'farcode'
+ placed at address 01099e-010a01 of size 000064
+(build/util.o unit 2 section index 17)
+    Defines:
+        int_to_ascii = 01099e
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _UDivMod16 in (integer.o (from clib-lc-sd.a) unit 16 section index 6)
+    Referenced from:
+        update_score (build/graphics.o unit 1 section index 27)
+
+cmd_copy in section 'farcode'  placed at address 010a02-010a66 of size 000065
+(build/shell.o unit 0 section index 27)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_ ` in (build/shell.o unit 0 section index 37)
+        `_StringLiteral_Error: ` in (build/shell.o unit 0 section index 45)
+        `_StringLiteral_File copied.` in (build/shell.o unit 0 section index 53)
+        `_StringLiteral_Usage: copy <src> <dst>` in (build/shell.o unit 0 section index 66)
+        copy_file in (build/filesys.o unit 4 section index 48)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+        print_hex8 in (build/util.o unit 2 section index 7)
+        strtok in (lib_strtok.o (from clib-lc-sd.a) unit 17 section index 3)
+
+cmd_ren in section 'farcode'  placed at address 010a67-010acb of size 000065
+(build/shell.o unit 0 section index 28)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_ ` in (build/shell.o unit 0 section index 37)
+        `_StringLiteral_Error: ` in (build/shell.o unit 0 section index 45)
+        `_StringLiteral_File renamed.` in (build/shell.o unit 0 section index 55)
+        `_StringLiteral_Usage: ren <old> <new>` in (build/shell.o unit 0 section index 69)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+        print_hex8 in (build/util.o unit 2 section index 7)
+        rename_file in (build/filesys.o unit 4 section index 47)
+        strtok in (lib_strtok.o (from clib-lc-sd.a) unit 17 section index 3)
+
+print_hex32 in section 'farcode'
+ placed at address 010acc-010b34 of size 000069
+(build/util.o unit 2 section index 9)
+    Defines:
+        print_hex32 = 010acc
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        hex_digits in (build/util.o unit 2 section index 19)
+        os_print_char in (build/os.o unit 3 section index 7)
+    Referenced from:
+        (build/shell.o unit 0 section index 22)
+        (build/shell.o unit 0 section index 23)
+
+os_draw_line in section 'farcode'
+ placed at address 010b35-010ba0 of size 00006c
+(build/os.o unit 3 section index 3)
+    Defines:
+        os_draw_line = 010b35
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        draw_brick_half (build/graphics.o unit 1 section index 25)
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+show_wait_for_key_box in section 'farcode'
+ placed at address 010ba1-010c15 of size 000075
+(build/graphics.o unit 1 section index 23)
+    Defines:
+        show_wait_for_key_box = 010ba1
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_Press any key to continue...` in (build/graphics.o unit 1 section index 11)
+        os_draw_rectangle in (build/os.o unit 3 section index 2)
+        os_kbd_wait_for_key in (build/os.o unit 3 section index 19)
+        os_puts in (build/os.o unit 3 section index 13)
+        os_set_char_color in (build/os.o unit 3 section index 21)
+        os_set_char_xy in (build/os.o unit 3 section index 20)
+    Referenced from:
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+os_draw_rectangle in section 'farcode'
+ placed at address 010c16-010c8a of size 000075
+(build/os.o unit 3 section index 2)
+    Defines:
+        os_draw_rectangle = 010c16
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        draw_logo_32_scaled_4x (build/graphics.o unit 1 section index 15)
+        gfxFrame1 (build/graphics.o unit 1 section index 17)
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+        show_wait_for_key_box (build/graphics.o unit 1 section index 23)
+        draw_brick (build/graphics.o unit 1 section index 24)
+        draw_brick_half (build/graphics.o unit 1 section index 25)
+        update_score (build/graphics.o unit 1 section index 27)
+        map_test (build/graphics.o unit 1 section index 28)
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+draw_brick_half in section 'farcode'
+ placed at address 010c8b-010d04 of size 00007a
+(build/graphics.o unit 1 section index 25)
+    Defines:
+        draw_brick_half = 010c8b
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        os_draw_line in (build/os.o unit 3 section index 3)
+        os_draw_rectangle in (build/os.o unit 3 section index 2)
+    Referenced from:
+        map_test (build/graphics.o unit 1 section index 28)
+
+__initialize_sections in section 'farcode'
+ placed at address 010d05-010d8b of size 000087
+(initialize.o (from clib-lc-sd.a) unit 21 section index 2)
+    Defines:
+        __initialize_sections = 010d05
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        __memcpy_far in (memcpy_far.o (from clib-lc-sd.a) unit 24 section index 2)
+        __memset_far in (memset_far.o (from clib-lc-sd.a) unit 23 section index 2)
+    Referenced from:
+        __data_initialization_needed (cstartup.o (from clib-lc-sd.a) unit 6 section index 3)
+
+cmd_del in section 'farcode'  placed at address 010d8c-010e17 of size 00008c
+(build/shell.o unit 0 section index 26)
+    References:
+        `_StringLiteral_Deleting: ` in (build/shell.o unit 0 section index 43)
+        `_StringLiteral_Error: Could not update FAT.` in (build/shell.o unit 0 section index 46)
+        `_StringLiteral_Error: File not found.` in (build/filesys.o unit 4 section index 63)
+        `_StringLiteral_FS not init.` in (build/filesys.o unit 4 section index 68)
+        `_StringLiteral_File deleted successfully.` in (build/shell.o unit 0 section index 54)
+        `_StringLiteral_Unknown error during deletion.` in (build/shell.o unit 0 section index 65)
+        `_StringLiteral_Usage: del <filename>` in (build/shell.o unit 0 section index 67)
+        delete_file in (build/filesys.o unit 4 section index 36)
+        g_fat_initialized in (build/filesys.o unit 4 section index 15)
+        os_newline in (build/os.o unit 3 section index 8)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+
+rd32 in section 'farcode'  placed at address 010e18-010ea5 of size 00008e
+(build/filesys.o unit 4 section index 32)
+    Defines:
+        rd32 = 010e18
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        copy_file (build/filesys.o unit 4 section index 48)
+
+cmd_run_bin in section 'farcode'
+ placed at address 010ea6-010f39 of size 000094
+(build/shell.o unit 0 section index 30)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_Back to Shell...` in (build/shell.o unit 0 section index 41)
+        `_StringLiteral_Error loading file: ` in (build/shell.o unit 0 section index 44)
+        `_StringLiteral_FS not init.` in (build/filesys.o unit 4 section index 68)
+        `_StringLiteral_Jumping to 03:0000...` in (build/shell.o unit 0 section index 57)
+        `_StringLiteral_Loading: ` in (build/shell.o unit 0 section index 60)
+        `_StringLiteral_Usage: run <filename>` in (build/shell.o unit 0 section index 70)
+        g_fat_initialized in (build/filesys.o unit 4 section index 15)
+        ... 5 more
+
+strtok_r in section 'farcode'  placed at address 010f3a-010fec of size 0000b3
+(lib_strtokr.o (from clib-lc-sd.a) unit 18 section index 2)
+    Defines:
+        strtok_r = 010f3a
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        strtok (lib_strtok.o (from clib-lc-sd.a) unit 17 section index 3)
+
+cmd_load_hex in section 'farcode'
+ placed at address 010fed-0110a2 of size 0000b6
+(build/shell.o unit 0 section index 23)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_FS not init.` in (build/filesys.o unit 4 section index 68)
+        `_StringLiteral_Jump address of 0x` in (build/shell.o unit 0 section index 56)
+        `_StringLiteral_Loading: ` in (build/shell.o unit 0 section index 60)
+        `_StringLiteral_Usage: run <filename>` in (build/shell.o unit 0 section index 70)
+        g_fat_initialized in (build/filesys.o unit 4 section index 15)
+        load_hex_from_sd in (build/filesys.o unit 4 section index 43)
+        os_newline in (build/os.o unit 3 section index 8)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+        print_hex32 in (build/util.o unit 2 section index 9)
+
+DivMod16 in section 'farcode'  placed at address 0110a3-0110b4 of size 000012
+(integer.o (from clib-lc-sd.a) unit 16 section index 5)
+    References:
+        _UDivMod16 in (integer.o (from clib-lc-sd.a) unit 16 section index 6)
+
+_UDivMod16 in section 'farcode'  placed at address 0110b5-0110d9 of size 000025
+(integer.o (from clib-lc-sd.a) unit 16 section index 6)
+    Defines:
+        _UDivMod16 = 0110b5
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        print_dec_year (build/util.o unit 2 section index 6)
+        int_to_ascii (build/util.o unit 2 section index 17)
+        (integer.o (from clib-lc-sd.a) unit 16 section index 5)
+
+_Div16 in section 'farcode'  placed at address 0110da-0110e7 of size 00000e
+(integer.o (from clib-lc-sd.a) unit 16 section index 7)
+    Defines:
+        _Div16 = 0110da
+    References:
+        _DivModSign16 in (integer.o (from clib-lc-sd.a) unit 16 section index 9)
+    Referenced from:
+        print_dec8 (build/util.o unit 2 section index 4)
+
+_Mod16 in section 'farcode'  placed at address 0110e8-0110ec of size 000005
+(integer.o (from clib-lc-sd.a) unit 16 section index 8)
+    Defines:
+        _Mod16 = 0110e8
+    Referenced from:
+        sprite_loop_test (build/graphics.o unit 1 section index 22)
+        map_test (build/graphics.o unit 1 section index 28)
+        print_dec8 (build/util.o unit 2 section index 4)
+
+_DivModSign16 in section 'farcode'
+ placed at address 0110ed-0110f4 of size 000008
+(integer.o (from clib-lc-sd.a) unit 16 section index 9)
+    Defines:
+        _DivModSign16 = 0110ed
+    Referenced from:
+        _Div16 (integer.o (from clib-lc-sd.a) unit 16 section index 7)
+
+_UDivMod32 in section 'farcode'  placed at address 0110f5-01113d of size 000049
+(integer.o (from clib-lc-sd.a) unit 16 section index 11)
+    Defines:
+        _UDivMod32 = 0110f5
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        print_padded_dec32 (build/util.o unit 2 section index 15)
+
+_DivModSign32 in section 'farcode'
+ placed at address 01113e-011153 of size 000016
+(integer.o (from clib-lc-sd.a) unit 16 section index 14)
+    Defines:
+        _DivModSign32 = 01113e
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+
+keyboard_check in section 'farcode'
+ placed at address 011154-01120c of size 0000b9
+(build/shell.o unit 0 section index 33)
+    References:
+        execute_command in (build/shell.o unit 0 section index 32)
+        os_kbd_get_char in (build/os.o unit 3 section index 18)
+        os_newline in (build/os.o unit 3 section index 8)
+        os_print_char in (build/os.o unit 3 section index 7)
+
+update_score in section 'farcode'
+ placed at address 01120d-0112ca of size 0000be
+(build/graphics.o unit 1 section index 27)
+    Defines:
+        update_score = 01120d
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_ 1-1` in (build/graphics.o unit 1 section index 5)
+        _StringLiteral_000000 in (build/graphics.o unit 1 section index 6)
+        _StringLiteral_MARIO in (build/graphics.o unit 1 section index 9)
+        `_StringLiteral_O x00` in (build/graphics.o unit 1 section index 10)
+        _StringLiteral_TIME in (build/graphics.o unit 1 section index 12)
+        _StringLiteral_WORLD in (build/graphics.o unit 1 section index 13)
+        int_to_ascii in (build/util.o unit 2 section index 17)
+        os_draw_rectangle in (build/os.o unit 3 section index 2)
+        os_puts in (build/os.o unit 3 section index 13)
+        os_set_char_xy in (build/os.o unit 3 section index 20)
+        time_remaining in (build/graphics.o unit 1 section index 2)
+    Referenced from:
+        map_test (build/graphics.o unit 1 section index 28)
+
+display_date_time in section 'farcode'
+ placed at address 0112cb-01138f of size 0000c5
+(build/shell.o unit 0 section index 14)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_ ` in (build/shell.o unit 0 section index 37)
+        `_StringLiteral_Current Date/Time: ` in (build/shell.o unit 0 section index 42)
+        get_system_time_fat in (build/filesys.o unit 4 section index 44)
+        os_newline in (build/os.o unit 3 section index 8)
+        os_print_char in (build/os.o unit 3 section index 7)
+        os_puts in (build/os.o unit 3 section index 13)
+        print_dec8 in (build/util.o unit 2 section index 4)
+        print_dec_year in (build/util.o unit 2 section index 6)
+
+cmd_run_hex in section 'farcode'
+ placed at address 011390-011455 of size 0000c6
+(build/shell.o unit 0 section index 22)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_Back to Shell...` in (build/shell.o unit 0 section index 41)
+        `_StringLiteral_FS not init.` in (build/filesys.o unit 4 section index 68)
+        `_StringLiteral_Jumping to 0x` in (build/shell.o unit 0 section index 58)
+        `_StringLiteral_Loading and executing: ` in (build/shell.o unit 0 section index 59)
+        `_StringLiteral_Usage: run <filename>` in (build/shell.o unit 0 section index 70)
+        g_fat_initialized in (build/filesys.o unit 4 section index 15)
+        load_hex_from_sd in (build/filesys.o unit 4 section index 43)
+        os_newline in (build/os.o unit 3 section index 8)
+        os_puts in (build/os.o unit 3 section index 13)
+        print_hex32 in (build/util.o unit 2 section index 9)
+
+fat_init in section 'farcode'  placed at address 011456-01151c of size 0000c7
+(build/filesys.o unit 4 section index 33)
+    Defines:
+        fat_init = 011456
+    References:
+        g_data_lba_start in (build/filesys.o unit 4 section index 24)
+        g_fat_initialized in (build/filesys.o unit 4 section index 15)
+        g_fat_size_sectors in (build/filesys.o unit 4 section index 19)
+        g_partition_lba_start in (build/filesys.o unit 4 section index 17)
+        g_root_lba_start in (build/filesys.o unit 4 section index 22)
+        g_root_sz_sects in (build/filesys.o unit 4 section index 23)
+        g_rsvd_sec_cnt in (build/filesys.o unit 4 section index 18)
+        g_sectors_per_cluster in (build/filesys.o unit 4 section index 25)
+        rd16 in (build/filesys.o unit 4 section index 31)
+        rd32 in (build/filesys.o unit 4 section index 32)
+        sdcard_init in (build/filesys.o unit 4 section index 26)
+        sdcard_read_sector in (build/filesys.o unit 4 section index 27)
+    Referenced from:
+        (build/shell.o unit 0 section index 18)
+        main (build/shell.o unit 0 section index 34)
+
+execute_command in section 'farcode'
+ placed at address 01151d-0115ed of size 0000d1
+(build/shell.o unit 0 section index 32)
+    Defines:
+        execute_command = 01151d
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _JmpIndLong in (controlFlow.o (from clib-lc-sd.a) unit 9 section index 3)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 16 section index 2)
+        `_StringLiteral_Unknown command.` in (build/shell.o unit 0 section index 64)
+        command_table in (build/shell.o unit 0 section index 35)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+        strcmp in (lib_strcmp.o (from clib-lc-sd.a) unit 20 section index 2)
+    Referenced from:
+        (build/shell.o unit 0 section index 33)
+
+gfxFrame1 in section 'farcode'  placed at address 0115ee-0116d7 of size 0000ea
+(build/graphics.o unit 1 section index 17)
+    Defines:
+        gfxFrame1 = 0115ee
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        delay in (build/util.o unit 2 section index 2)
+        os_draw_rectangle in (build/os.o unit 3 section index 2)
+        rainbow332 in (build/graphics.o unit 1 section index 31)
+    Referenced from:
+        diagonalColors (build/graphics.o unit 1 section index 20)
+
+get_system_time_fat in section 'farcode'
+ placed at address 0116d8-0117c8 of size 0000f1
+(build/filesys.o unit 4 section index 44)
+    Defines:
+        get_system_time_fat = 0116d8
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        bcd_to_bin in (build/util.o unit 2 section index 11)
+    Referenced from:
+        (build/shell.o unit 0 section index 14)
+        create_directory_entry (build/filesys.o unit 4 section index 46)
+        rename_file (build/filesys.o unit 4 section index 47)
+
+map_test in section 'farcode'  placed at address 0117c9-0118d1 of size 000109
+(build/graphics.o unit 1 section index 28)
+    Defines:
+        map_test = 0117c9
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _Mod16 in (integer.o (from clib-lc-sd.a) unit 16 section index 8)
+        delayms in (build/util.o unit 2 section index 3)
+        draw_brick in (build/graphics.o unit 1 section index 24)
+        draw_brick_half in (build/graphics.o unit 1 section index 25)
+        draw_cloud in (build/graphics.o unit 1 section index 26)
+        os_draw_rectangle in (build/os.o unit 3 section index 2)
+        os_draw_sprite16 in (build/os.o unit 3 section index 23)
+        os_set_char_color in (build/os.o unit 3 section index 21)
+        time_remaining in (build/graphics.o unit 1 section index 2)
+        update_score in (build/graphics.o unit 1 section index 27)
+    Referenced from:
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+draw_logo_32_scaled_4x in section 'farcode'
+ placed at address 0118d2-0119f0 of size 00011f
+(build/graphics.o unit 1 section index 15)
+    Defines:
+        draw_logo_32_scaled_4x = 0118d2
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        delay in (build/util.o unit 2 section index 2)
+        os_draw_rectangle in (build/os.o unit 3 section index 2)
+        rehsd_raw_565 in (build/graphics.o unit 1 section index 3)
+    Referenced from:
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+hex_to_long in section 'farcode'
+ placed at address 0119f1-011b18 of size 000128
+(build/util.o unit 2 section index 13)
+    Defines:
+        hex_to_long = 0119f1
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        (build/shell.o unit 0 section index 21)
+
+allocate_cluster in section 'farcode'
+ placed at address 011b19-011c4e of size 000136
+(build/filesys.o unit 4 section index 40)
+    Defines:
+        allocate_cluster = 011b19
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        g_fat_size_sectors in (build/filesys.o unit 4 section index 19)
+        g_partition_lba_start in (build/filesys.o unit 4 section index 17)
+        g_rsvd_sec_cnt in (build/filesys.o unit 4 section index 18)
+        sdcard_read_sector in (build/filesys.o unit 4 section index 27)
+        sdcard_write_sector in (build/filesys.o unit 4 section index 28)
+    Referenced from:
+        copy_file (build/filesys.o unit 4 section index 48)
+
+format_fat_name in section 'farcode'
+ placed at address 011c4f-011db1 of size 000163
+(build/filesys.o unit 4 section index 30)
+    Defines:
+        format_fat_name = 011c4f
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Referenced from:
+        print_file_contents (build/filesys.o unit 4 section index 35)
+        delete_file (build/filesys.o unit 4 section index 36)
+        load_hex_from_sd (build/filesys.o unit 4 section index 43)
+        create_directory_entry (build/filesys.o unit 4 section index 46)
+        rename_file (build/filesys.o unit 4 section index 47)
+        copy_file (build/filesys.o unit 4 section index 48)
+        load_bin_from_sd (build/filesys.o unit 4 section index 49)
+
+cmd_memdump_serial in section 'farcode'
+ placed at address 011db2-011f16 of size 000165
+(build/shell.o unit 0 section index 21)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_Error: Missing byte count.` in (build/shell.o unit 0 section index 48)
+        `_StringLiteral_Example: memdump 0x005000 0x80` in (build/shell.o unit 0 section index 49)
+        `_StringLiteral_Usage: memdump [addr_hex] [bytes_hex]` in (build/shell.o unit 0 section index 68)
+        hex_to_long in (build/util.o unit 2 section index 13)
+        os_newline in (build/os.o unit 3 section index 8)
+        os_newline_serial in (build/os.o unit 3 section index 16)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_print_char_serial in (build/os.o unit 3 section index 15)
+        os_puts in (build/os.o unit 3 section index 13)
+        print_hex_serial in (build/util.o unit 2 section index 10)
+
+cmd_setdatetime in section 'farcode'
+ placed at address 011f17-012089 of size 000173
+(build/shell.o unit 0 section index 29)
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 16 section index 2)
+        `_StringLiteral_RTC Updated.` in (build/shell.o unit 0 section index 62)
+        `_StringLiteral_Usage: set-datetime YY MM DD HH MM SS` in (build/shell.o unit 0 section index 71)
+        dec_to_bcd in (build/util.o unit 2 section index 16)
+        os_newline_with_prompt in (build/os.o unit 3 section index 9)
+        os_puts in (build/os.o unit 3 section index 13)
+
+print_padded_dec32 in section 'farcode'
+ placed at address 01208a-012201 of size 000178
+(build/util.o unit 2 section index 15)
+    Defines:
+        print_padded_dec32 = 01208a
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _UDivMod32 in (integer.o (from clib-lc-sd.a) unit 16 section index 11)
+        os_print_char in (build/os.o unit 3 section index 7)
+        os_puts in (build/os.o unit 3 section index 13)
+    Referenced from:
+        list_root_directory (build/filesys.o unit 4 section index 34)
+
+draw_cloud in section 'farcode'  placed at address 012202-0123fa of size 0001f9
+(build/graphics.o unit 1 section index 26)
+    Defines:
+        draw_cloud = 012202
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        os_draw_circle in (build/os.o unit 3 section index 4)
+    Referenced from:
+        map_test (build/graphics.o unit 1 section index 28)
+
+rainbow332 in section 'farcode'  placed at address 0123fb-012613 of size 000219
+(build/graphics.o unit 1 section index 31)
+    Defines:
+        rainbow332 = 0123fb
+    References:
+        rgb332 in (build/graphics.o unit 1 section index 30)
+    Referenced from:
+        gfxFrame1 (build/graphics.o unit 1 section index 17)
+        (build/graphics.o unit 1 section index 33)
+
+delete_file in section 'farcode'
+ placed at address 012614-012864 of size 000251
+(build/filesys.o unit 4 section index 36)
+    Defines:
+        delete_file = 012614
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_Existing file found - deleting...` in (build/filesys.o unit 4 section index 64)
+        format_fat_name in (build/filesys.o unit 4 section index 30)
+        g_fat_initialized in (build/filesys.o unit 4 section index 15)
+        g_fat_size_sectors in (build/filesys.o unit 4 section index 19)
+        g_partition_lba_start in (build/filesys.o unit 4 section index 17)
+        g_root_lba_start in (build/filesys.o unit 4 section index 22)
+        g_root_sz_sects in (build/filesys.o unit 4 section index 23)
+        ... 5 more
+    Referenced from:
+        (build/shell.o unit 0 section index 26)
+        copy_file (build/filesys.o unit 4 section index 48)
+
+graphics_test in section 'farcode'
+ placed at address 012865-012ad5 of size 000271
+(build/graphics.o unit 1 section index 29)
+    Defines:
+        graphics_test = 012865
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_Hello, World!` in (build/graphics.o unit 1 section index 7)
+        `_StringLiteral_Hola!` in (build/graphics.o unit 1 section index 8)
+        _StringLiteral_rehsd in (build/graphics.o unit 1 section index 14)
+        delay in (build/util.o unit 2 section index 2)
+        delayms in (build/util.o unit 2 section index 3)
+        diagonalColors in (build/graphics.o unit 1 section index 20)
+        draw_logo_32_scaled_4x in (build/graphics.o unit 1 section index 15)
+        ... 11 more
+    Referenced from:
+        (build/shell.o unit 0 section index 25)
+
+create_directory_entry in section 'farcode'
+ placed at address 012ad6-012dac of size 0002d7
+(build/filesys.o unit 4 section index 46)
+    Defines:
+        create_directory_entry = 012ad6
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        format_fat_name in (build/filesys.o unit 4 section index 30)
+        g_root_lba_start in (build/filesys.o unit 4 section index 22)
+        g_root_sz_sects in (build/filesys.o unit 4 section index 23)
+        get_system_time_fat in (build/filesys.o unit 4 section index 44)
+        sdcard_read_sector in (build/filesys.o unit 4 section index 27)
+        sdcard_write_sector in (build/filesys.o unit 4 section index 28)
+    Referenced from:
+        copy_file (build/filesys.o unit 4 section index 48)
+
+sprite_loop_test in section 'farcode'
+ placed at address 012dad-0130bd of size 000311
+(build/graphics.o unit 1 section index 22)
+    Defines:
+        sprite_loop_test = 012dad
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _Mod16 in (integer.o (from clib-lc-sd.a) unit 16 section index 8)
+        delay in (build/util.o unit 2 section index 2)
+        delayms in (build/util.o unit 2 section index 3)
+        os_draw_rectangle in (build/os.o unit 3 section index 2)
+        os_draw_sprite16 in (build/os.o unit 3 section index 23)
+        os_draw_sprite32 in (build/os.o unit 3 section index 22)
+        os_tile_backup_16 in (build/os.o unit 3 section index 24)
+        os_tile_backup_32 in (build/os.o unit 3 section index 25)
+        os_tile_restore_16 in (build/os.o unit 3 section index 26)
+        os_tile_restore_32 in (build/os.o unit 3 section index 27)
+    Referenced from:
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+rename_file in section 'farcode'
+ placed at address 0130be-0133ec of size 00032f
+(build/filesys.o unit 4 section index 47)
+    Defines:
+        rename_file = 0130be
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        format_fat_name in (build/filesys.o unit 4 section index 30)
+        g_fat_initialized in (build/filesys.o unit 4 section index 15)
+        g_root_lba_start in (build/filesys.o unit 4 section index 22)
+        g_root_sz_sects in (build/filesys.o unit 4 section index 23)
+        get_system_time_fat in (build/filesys.o unit 4 section index 44)
+        sdcard_read_sector in (build/filesys.o unit 4 section index 27)
+        sdcard_write_sector in (build/filesys.o unit 4 section index 28)
+    Referenced from:
+        (build/shell.o unit 0 section index 28)
+
+load_bin_from_sd in section 'farcode'
+ placed at address 0133ed-013789 of size 00039d
+(build/filesys.o unit 4 section index 49)
+    Defines:
+        load_bin_from_sd = 0133ed
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 16 section index 2)
+        format_fat_name in (build/filesys.o unit 4 section index 30)
+        g_data_lba_start in (build/filesys.o unit 4 section index 24)
+        g_root_lba_start in (build/filesys.o unit 4 section index 22)
+        g_root_sz_sects in (build/filesys.o unit 4 section index 23)
+        g_sectors_per_cluster in (build/filesys.o unit 4 section index 25)
+        sdcard_read_sector in (build/filesys.o unit 4 section index 27)
+    Referenced from:
+        (build/shell.o unit 0 section index 30)
+
+print_file_contents in section 'farcode'
+ placed at address 01378a-013b38 of size 0003af
+(build/filesys.o unit 4 section index 35)
+    Defines:
+        print_file_contents = 01378a
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 16 section index 2)
+        `_StringLiteral_ ---` in (build/filesys.o unit 4 section index 56)
+        `_StringLiteral_--- ` in (build/filesys.o unit 4 section index 57)
+        `_StringLiteral_------------------` in (build/filesys.o unit 4 section index 58)
+        `_StringLiteral_Error: File not found.` in (build/filesys.o unit 4 section index 63)
+        `_StringLiteral_FS not init.` in (build/filesys.o unit 4 section index 68)
+        `_StringLiteral_Read Error.` in (build/filesys.o unit 4 section index 72)
+        ... 10 more
+    Referenced from:
+        (build/shell.o unit 0 section index 20)
+
+load_hex_from_sd in section 'farcode'
+ placed at address 013b39-013efd of size 0003c5
+(build/filesys.o unit 4 section index 43)
+    Defines:
+        load_hex_from_sd = 013b39
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 16 section index 2)
+        format_fat_name in (build/filesys.o unit 4 section index 30)
+        g_data_lba_start in (build/filesys.o unit 4 section index 24)
+        g_root_lba_start in (build/filesys.o unit 4 section index 22)
+        g_root_sz_sects in (build/filesys.o unit 4 section index 23)
+        g_sectors_per_cluster in (build/filesys.o unit 4 section index 25)
+        get_hex_pair in (build/filesys.o unit 4 section index 45)
+        sdcard_read_sector in (build/filesys.o unit 4 section index 27)
+        target_fat_name in (build/filesys.o unit 4 section index 2)
+    Referenced from:
+        (build/shell.o unit 0 section index 22)
+        (build/shell.o unit 0 section index 23)
+
+copy_file in section 'farcode'  placed at address 013efe-014347 of size 00044a
+(build/filesys.o unit 4 section index 48)
+    Defines:
+        copy_file = 013efe
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        _Mul16 in (integer.o (from clib-lc-sd.a) unit 16 section index 2)
+        allocate_cluster in (build/filesys.o unit 4 section index 40)
+        copy512 in (build/filesys.o unit 4 section index 39)
+        create_directory_entry in (build/filesys.o unit 4 section index 46)
+        delete_file in (build/filesys.o unit 4 section index 36)
+        format_fat_name in (build/filesys.o unit 4 section index 30)
+        g_data_lba_start in (build/filesys.o unit 4 section index 24)
+        ... 11 more
+    Referenced from:
+        (build/shell.o unit 0 section index 27)
+
+list_root_directory in section 'farcode'
+ placed at address 014348-0147d5 of size 00048e
+(build/filesys.o unit 4 section index 34)
+    Defines:
+        list_root_directory = 014348
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        `_StringLiteral_  ` in (build/filesys.o unit 4 section index 52)
+        `_StringLiteral_<DIR>          ` in (build/filesys.o unit 4 section index 59)
+        `_StringLiteral_<VOL> ` in (build/filesys.o unit 4 section index 60)
+        `_StringLiteral_Dir Read Error` in (build/filesys.o unit 4 section index 61)
+        `_StringLiteral_FS not init.` in (build/filesys.o unit 4 section index 68)
+        g_fat_initialized in (build/filesys.o unit 4 section index 15)
+        g_root_lba_start in (build/filesys.o unit 4 section index 22)
+        ... 8 more
+    Referenced from:
+        (build/shell.o unit 0 section index 18)
+
+Section 'data_init_table'  placed at address 020000-020009 of size 00000a
+(linker generated)
+
+time_remaining in section 'data'
+ placed at address 00320b-00320c of size 000002
+(build/graphics.o unit 1 section index 2)
+    Defines:
+        time_remaining = 00320b
+    Referenced from:
+        update_score (build/graphics.o unit 1 section index 27)
+        map_test (build/graphics.o unit 1 section index 28)
+
+`_StringLiteral_ ` in section 'cdata'
+ placed at address 00320d-00320e of size 000002
+(build/shell.o unit 0 section index 37)
+    Defines:
+        `_StringLiteral_ ` = 00320d
+    Referenced from:
+        (build/shell.o unit 0 section index 14)
+        (build/shell.o unit 0 section index 27)
+        (build/shell.o unit 0 section index 28)
+
+`_StringLiteral_?` in section 'cdata'
+ placed at address 00320f-003210 of size 000002
+(build/shell.o unit 0 section index 39)
+    Defines:
+        `_StringLiteral_?` = 00320f
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+`_StringLiteral_  ` in section 'cdata'
+ placed at address 003211-003213 of size 000003
+(build/filesys.o unit 4 section index 52)
+    Defines:
+        `_StringLiteral_  ` = 003211
+    Referenced from:
+        list_root_directory (build/filesys.o unit 4 section index 34)
+
+`_StringLiteral_0.2` in section 'cdata'
+ placed at address 003214-003217 of size 000004
+(build/shell.o unit 0 section index 38)
+    Defines:
+        `_StringLiteral_0.2` = 003214
+    Referenced from:
+        (build/shell.o unit 0 section index 17)
+        main (build/shell.o unit 0 section index 34)
+
+_StringLiteral_cls in section 'cdata'
+ placed at address 003218-00321b of size 000004
+(build/shell.o unit 0 section index 74)
+    Defines:
+        _StringLiteral_cls = 003218
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_del in section 'cdata'
+ placed at address 00321c-00321f of size 000004
+(build/shell.o unit 0 section index 77)
+    Defines:
+        _StringLiteral_del = 00321c
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_dir in section 'cdata'
+ placed at address 003220-003223 of size 000004
+(build/shell.o unit 0 section index 78)
+    Defines:
+        _StringLiteral_dir = 003220
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_ren in section 'cdata'
+ placed at address 003224-003227 of size 000004
+(build/shell.o unit 0 section index 84)
+    Defines:
+        _StringLiteral_ren = 003224
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_ver in section 'cdata'
+ placed at address 003228-00322b of size 000004
+(build/shell.o unit 0 section index 89)
+    Defines:
+        _StringLiteral_ver = 003228
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_copy in section 'cdata'
+ placed at address 00322c-003230 of size 000005
+(build/shell.o unit 0 section index 75)
+    Defines:
+        _StringLiteral_copy = 00322c
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_exit in section 'cdata'
+ placed at address 003231-003235 of size 000005
+(build/shell.o unit 0 section index 79)
+    Defines:
+        _StringLiteral_exit = 003231
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_help in section 'cdata'
+ placed at address 003236-00323a of size 000005
+(build/shell.o unit 0 section index 81)
+    Defines:
+        _StringLiteral_help = 003236
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_load in section 'cdata'
+ placed at address 00323b-00323f of size 000005
+(build/shell.o unit 0 section index 82)
+    Defines:
+        _StringLiteral_load = 00323b
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_type in section 'cdata'
+ placed at address 003240-003244 of size 000005
+(build/shell.o unit 0 section index 88)
+    Defines:
+        _StringLiteral_type = 003240
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+`_StringLiteral_ 1-1` in section 'cdata'
+ placed at address 003245-003249 of size 000005
+(build/graphics.o unit 1 section index 5)
+    Defines:
+        `_StringLiteral_ 1-1` = 003245
+    Referenced from:
+        update_score (build/graphics.o unit 1 section index 27)
+
+_StringLiteral_TIME in section 'cdata'
+ placed at address 00324a-00324e of size 000005
+(build/graphics.o unit 1 section index 12)
+    Defines:
+        _StringLiteral_TIME = 00324a
+    Referenced from:
+        update_score (build/graphics.o unit 1 section index 27)
+
+`_StringLiteral_ ---` in section 'cdata'
+ placed at address 00324f-003253 of size 000005
+(build/filesys.o unit 4 section index 56)
+    Defines:
+        `_StringLiteral_ ---` = 00324f
+    Referenced from:
+        print_file_contents (build/filesys.o unit 4 section index 35)
+
+`_StringLiteral_--- ` in section 'cdata'
+ placed at address 003254-003258 of size 000005
+(build/filesys.o unit 4 section index 57)
+    Defines:
+        `_StringLiteral_--- ` = 003254
+    Referenced from:
+        print_file_contents (build/filesys.o unit 4 section index 35)
+
+`_StringLiteral_Hola!` in section 'cdata'
+ placed at address 003259-00325e of size 000006
+(build/graphics.o unit 1 section index 8)
+    Defines:
+        `_StringLiteral_Hola!` = 003259
+    Referenced from:
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+_StringLiteral_MARIO in section 'cdata'
+ placed at address 00325f-003264 of size 000006
+(build/graphics.o unit 1 section index 9)
+    Defines:
+        _StringLiteral_MARIO = 00325f
+    Referenced from:
+        update_score (build/graphics.o unit 1 section index 27)
+
+`_StringLiteral_O x00` in section 'cdata'
+ placed at address 003265-00326a of size 000006
+(build/graphics.o unit 1 section index 10)
+    Defines:
+        `_StringLiteral_O x00` = 003265
+    Referenced from:
+        update_score (build/graphics.o unit 1 section index 27)
+
+_StringLiteral_WORLD in section 'cdata'
+ placed at address 00326b-003270 of size 000006
+(build/graphics.o unit 1 section index 13)
+    Defines:
+        _StringLiteral_WORLD = 00326b
+    Referenced from:
+        update_score (build/graphics.o unit 1 section index 27)
+
+_StringLiteral_rehsd in section 'cdata'
+ placed at address 003271-003276 of size 000006
+(build/graphics.o unit 1 section index 14)
+    Defines:
+        _StringLiteral_rehsd = 003271
+    Referenced from:
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+_StringLiteral_runbin in section 'cdata'
+ placed at address 003277-00327d of size 000007
+(build/shell.o unit 0 section index 85)
+    Defines:
+        _StringLiteral_runbin = 003277
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_runhex in section 'cdata'
+ placed at address 00327e-003284 of size 000007
+(build/shell.o unit 0 section index 86)
+    Defines:
+        _StringLiteral_runhex = 00327e
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_000000 in section 'cdata'
+ placed at address 003285-00328b of size 000007
+(build/graphics.o unit 1 section index 6)
+    Defines:
+        _StringLiteral_000000 = 003285
+    Referenced from:
+        update_score (build/graphics.o unit 1 section index 27)
+
+`_StringLiteral_<VOL> ` in section 'cdata'
+ placed at address 00328c-003292 of size 000007
+(build/filesys.o unit 4 section index 60)
+    Defines:
+        `_StringLiteral_<VOL> ` = 00328c
+    Referenced from:
+        list_root_directory (build/filesys.o unit 4 section index 34)
+
+`_StringLiteral_Error: ` in section 'cdata'
+ placed at address 003293-00329a of size 000008
+(build/shell.o unit 0 section index 45)
+    Defines:
+        `_StringLiteral_Error: ` = 003293
+    Referenced from:
+        (build/shell.o unit 0 section index 27)
+        (build/shell.o unit 0 section index 28)
+
+_StringLiteral_gfxTest in section 'cdata'
+ placed at address 00329b-0032a2 of size 000008
+(build/shell.o unit 0 section index 80)
+    Defines:
+        _StringLiteral_gfxTest = 00329b
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_memdump in section 'cdata'
+ placed at address 0032a3-0032aa of size 000008
+(build/shell.o unit 0 section index 83)
+    Defines:
+        _StringLiteral_memdump = 0032a3
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+_StringLiteral_datetime in section 'cdata'
+ placed at address 0032ab-0032b3 of size 000009
+(build/shell.o unit 0 section index 76)
+    Defines:
+        _StringLiteral_datetime = 0032ab
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+`_StringLiteral_Loading: ` in section 'cdata'
+ placed at address 0032b4-0032bd of size 00000a
+(build/shell.o unit 0 section index 60)
+    Defines:
+        `_StringLiteral_Loading: ` = 0032b4
+    Referenced from:
+        (build/shell.o unit 0 section index 23)
+        (build/shell.o unit 0 section index 30)
+
+`_StringLiteral_Deleting: ` in section 'cdata'
+ placed at address 0032be-0032c8 of size 00000b
+(build/shell.o unit 0 section index 43)
+    Defines:
+        `_StringLiteral_Deleting: ` = 0032be
+    Referenced from:
+        (build/shell.o unit 0 section index 26)
+
+`_StringLiteral_Read Error.` in section 'cdata'
+ placed at address 0032c9-0032d4 of size 00000c
+(build/filesys.o unit 4 section index 72)
+    Defines:
+        `_StringLiteral_Read Error.` = 0032c9
+    Referenced from:
+        print_file_contents (build/filesys.o unit 4 section index 35)
+
+`_StringLiteral_File copied.` in section 'cdata'
+ placed at address 0032d5-0032e1 of size 00000d
+(build/shell.o unit 0 section index 53)
+    Defines:
+        `_StringLiteral_File copied.` = 0032d5
+    Referenced from:
+        (build/shell.o unit 0 section index 27)
+
+`_StringLiteral_RTC Updated.` in section 'cdata'
+ placed at address 0032e2-0032ee of size 00000d
+(build/shell.o unit 0 section index 62)
+    Defines:
+        `_StringLiteral_RTC Updated.` = 0032e2
+    Referenced from:
+        (build/shell.o unit 0 section index 29)
+
+`_StringLiteral_Shell loaded` in section 'cdata'
+ placed at address 0032ef-0032fb of size 00000d
+(build/shell.o unit 0 section index 63)
+    Defines:
+        `_StringLiteral_Shell loaded` = 0032ef
+    Referenced from:
+        main (build/shell.o unit 0 section index 34)
+
+`_StringLiteral_set-datetime` in section 'cdata'
+ placed at address 0032fc-003308 of size 00000d
+(build/shell.o unit 0 section index 87)
+    Defines:
+        `_StringLiteral_set-datetime` = 0032fc
+    Referenced from:
+        command_table (build/shell.o unit 0 section index 35)
+
+`_StringLiteral_FS not init.` in section 'cdata'
+ placed at address 003309-003315 of size 00000d
+(build/filesys.o unit 4 section index 68)
+    Defines:
+        `_StringLiteral_FS not init.` = 003309
+    Referenced from:
+        (build/shell.o unit 0 section index 22)
+        (build/shell.o unit 0 section index 23)
+        (build/shell.o unit 0 section index 26)
+        (build/shell.o unit 0 section index 30)
+        list_root_directory (build/filesys.o unit 4 section index 34)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+
+`_StringLiteral_File renamed.` in section 'cdata'
+ placed at address 003316-003323 of size 00000e
+(build/shell.o unit 0 section index 55)
+    Defines:
+        `_StringLiteral_File renamed.` = 003316
+    Referenced from:
+        (build/shell.o unit 0 section index 28)
+
+`_StringLiteral_Jumping to 0x` in section 'cdata'
+ placed at address 003324-003331 of size 00000e
+(build/shell.o unit 0 section index 58)
+    Defines:
+        `_StringLiteral_Jumping to 0x` = 003324
+    Referenced from:
+        (build/shell.o unit 0 section index 22)
+
+`_StringLiteral_Hello, World!` in section 'cdata'
+ placed at address 003332-00333f of size 00000e
+(build/graphics.o unit 1 section index 7)
+    Defines:
+        `_StringLiteral_Hello, World!` = 003332
+    Referenced from:
+        graphics_test (build/graphics.o unit 1 section index 29)
+
+`_StringLiteral_Dir Read Error` in section 'cdata'
+ placed at address 003340-00334e of size 00000f
+(build/filesys.o unit 4 section index 61)
+    Defines:
+        `_StringLiteral_Dir Read Error` = 003340
+    Referenced from:
+        list_root_directory (build/filesys.o unit 4 section index 34)
+
+`_StringLiteral_<DIR>          ` in section 'cdata'
+ placed at address 00334f-00335e of size 000010
+(build/filesys.o unit 4 section index 59)
+    Defines:
+        `_StringLiteral_<DIR>          ` = 00334f
+    Referenced from:
+        list_root_directory (build/filesys.o unit 4 section index 34)
+
+`_StringLiteral_Back to Shell...` in section 'cdata'
+ placed at address 00335f-00336f of size 000011
+(build/shell.o unit 0 section index 41)
+    Defines:
+        `_StringLiteral_Back to Shell...` = 00335f
+    Referenced from:
+        (build/shell.o unit 0 section index 22)
+        (build/shell.o unit 0 section index 30)
+
+`_StringLiteral_Exiting shell...` in section 'cdata'
+ placed at address 003370-003380 of size 000011
+(build/shell.o unit 0 section index 50)
+    Defines:
+        `_StringLiteral_Exiting shell...` = 003370
+    Referenced from:
+        (build/shell.o unit 0 section index 19)
+
+`_StringLiteral_Unknown command.` in section 'cdata'
+ placed at address 003381-003391 of size 000011
+(build/shell.o unit 0 section index 64)
+    Defines:
+        `_StringLiteral_Unknown command.` = 003381
+    Referenced from:
+        execute_command (build/shell.o unit 0 section index 32)
+
+hex_digits in section 'cdata'  placed at address 003392-0033a2 of size 000011
+(build/util.o unit 2 section index 19)
+    Defines:
+        hex_digits = 003392
+    Referenced from:
+        print_hex32 (build/util.o unit 2 section index 9)
+
+`_StringLiteral_FAT16 Init Failed!` in section 'cdata'
+ placed at address 0033a3-0033b5 of size 000013
+(build/shell.o unit 0 section index 51)
+    Defines:
+        `_StringLiteral_FAT16 Init Failed!` = 0033a3
+    Referenced from:
+        (build/shell.o unit 0 section index 18)
+        main (build/shell.o unit 0 section index 34)
+
+`_StringLiteral_Jump address of 0x` in section 'cdata'
+ placed at address 0033b6-0033c8 of size 000013
+(build/shell.o unit 0 section index 56)
+    Defines:
+        `_StringLiteral_Jump address of 0x` = 0033b6
+    Referenced from:
+        (build/shell.o unit 0 section index 23)
+
+`_StringLiteral_------------------` in section 'cdata'
+ placed at address 0033c9-0033db of size 000013
+(build/filesys.o unit 4 section index 58)
+    Defines:
+        `_StringLiteral_------------------` = 0033c9
+    Referenced from:
+        print_file_contents (build/filesys.o unit 4 section index 35)
+
+`_StringLiteral_Current Date/Time: ` in section 'cdata'
+ placed at address 0033dc-0033ef of size 000014
+(build/shell.o unit 0 section index 42)
+    Defines:
+        `_StringLiteral_Current Date/Time: ` = 0033dc
+    Referenced from:
+        (build/shell.o unit 0 section index 14)
+
+`_StringLiteral_Error loading file: ` in section 'cdata'
+ placed at address 0033f0-003404 of size 000015
+(build/shell.o unit 0 section index 44)
+    Defines:
+        `_StringLiteral_Error loading file: ` = 0033f0
+    Referenced from:
+        (build/shell.o unit 0 section index 30)
+
+`_StringLiteral_Jumping to 03:0000...` in section 'cdata'
+ placed at address 003405-00341a of size 000016
+(build/shell.o unit 0 section index 57)
+    Defines:
+        `_StringLiteral_Jumping to 03:0000...` = 003405
+    Referenced from:
+        (build/shell.o unit 0 section index 30)
+
+`_StringLiteral_Usage: del <filename>` in section 'cdata'
+ placed at address 00341b-003430 of size 000016
+(build/shell.o unit 0 section index 67)
+    Defines:
+        `_StringLiteral_Usage: del <filename>` = 00341b
+    Referenced from:
+        (build/shell.o unit 0 section index 26)
+
+`_StringLiteral_Usage: run <filename>` in section 'cdata'
+ placed at address 003431-003446 of size 000016
+(build/shell.o unit 0 section index 70)
+    Defines:
+        `_StringLiteral_Usage: run <filename>` = 003431
+    Referenced from:
+        (build/shell.o unit 0 section index 22)
+        (build/shell.o unit 0 section index 23)
+        (build/shell.o unit 0 section index 30)
+
+`_StringLiteral_Usage: ren <old> <new>` in section 'cdata'
+ placed at address 003447-00345d of size 000017
+(build/shell.o unit 0 section index 69)
+    Defines:
+        `_StringLiteral_Usage: ren <old> <new>` = 003447
+    Referenced from:
+        (build/shell.o unit 0 section index 28)
+
+`_StringLiteral_Usage: type <filename>` in section 'cdata'
+ placed at address 00345e-003474 of size 000017
+(build/shell.o unit 0 section index 72)
+    Defines:
+        `_StringLiteral_Usage: type <filename>` = 00345e
+    Referenced from:
+        (build/shell.o unit 0 section index 20)
+
+`_StringLiteral_Error: File not found.` in section 'cdata'
+ placed at address 003475-00348b of size 000017
+(build/filesys.o unit 4 section index 63)
+    Defines:
+        `_StringLiteral_Error: File not found.` = 003475
+    Referenced from:
+        (build/shell.o unit 0 section index 26)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+
+`_StringLiteral_Loading and executing: ` in section 'cdata'
+ placed at address 00348c-0034a3 of size 000018
+(build/shell.o unit 0 section index 59)
+    Defines:
+        `_StringLiteral_Loading and executing: ` = 00348c
+    Referenced from:
+        (build/shell.o unit 0 section index 22)
+
+`_StringLiteral_Usage: copy <src> <dst>` in section 'cdata'
+ placed at address 0034a4-0034bb of size 000018
+(build/shell.o unit 0 section index 66)
+    Defines:
+        `_StringLiteral_Usage: copy <src> <dst>` = 0034a4
+    Referenced from:
+        (build/shell.o unit 0 section index 27)
+
+`_StringLiteral_Error: Missing byte count.` in section 'cdata'
+ placed at address 0034bc-0034d6 of size 00001b
+(build/shell.o unit 0 section index 48)
+    Defines:
+        `_StringLiteral_Error: Missing byte count.` = 0034bc
+    Referenced from:
+        (build/shell.o unit 0 section index 21)
+
+`_StringLiteral_File deleted successfully.` in section 'cdata'
+ placed at address 0034d7-0034f1 of size 00001b
+(build/shell.o unit 0 section index 54)
+    Defines:
+        `_StringLiteral_File deleted successfully.` = 0034d7
+    Referenced from:
+        (build/shell.o unit 0 section index 26)
+
+`_StringLiteral_R265Nibbler Shell version ` in section 'cdata'
+ placed at address 0034f2-00350c of size 00001b
+(build/shell.o unit 0 section index 61)
+    Defines:
+        `_StringLiteral_R265Nibbler Shell version ` = 0034f2
+    Referenced from:
+        (build/shell.o unit 0 section index 17)
+
+`_StringLiteral_Error: Could not update FAT.` in section 'cdata'
+ placed at address 00350d-003529 of size 00001d
+(build/shell.o unit 0 section index 46)
+    Defines:
+        `_StringLiteral_Error: Could not update FAT.` = 00350d
+    Referenced from:
+        (build/shell.o unit 0 section index 26)
+
+`_StringLiteral_Press any key to continue...` in section 'cdata'
+ placed at address 00352a-003546 of size 00001d
+(build/graphics.o unit 1 section index 11)
+    Defines:
+        `_StringLiteral_Press any key to continue...` = 00352a
+    Referenced from:
+        show_wait_for_key_box (build/graphics.o unit 1 section index 23)
+
+`_StringLiteral_Example: memdump 0x005000 0x80` in section 'cdata'
+ placed at address 003547-003565 of size 00001f
+(build/shell.o unit 0 section index 49)
+    Defines:
+        `_StringLiteral_Example: memdump 0x005000 0x80` = 003547
+    Referenced from:
+        (build/shell.o unit 0 section index 21)
+
+`_StringLiteral_Unknown error during deletion.` in section 'cdata'
+ placed at address 003566-003584 of size 00001f
+(build/shell.o unit 0 section index 65)
+    Defines:
+        `_StringLiteral_Unknown error during deletion.` = 003566
+    Referenced from:
+        (build/shell.o unit 0 section index 26)
+
+`_StringLiteral_Existing file found - deleting...` in section 'cdata'
+ placed at address 003585-0035a6 of size 000022
+(build/filesys.o unit 4 section index 64)
+    Defines:
+        `_StringLiteral_Existing file found - deleting...` = 003585
+    Referenced from:
+        delete_file (build/filesys.o unit 4 section index 36)
+
+`_StringLiteral_Usage: memdump [addr_hex] [bytes_hex]` in section 'cdata'
+ placed at address 0035a7-0035cc of size 000026
+(build/shell.o unit 0 section index 68)
+    Defines:
+        `_StringLiteral_Usage: memdump [addr_hex] [bytes_hex]` = 0035a7
+    Referenced from:
+        (build/shell.o unit 0 section index 21)
+
+`_StringLiteral_Usage: set-datetime YY MM DD HH MM SS` in section 'cdata'
+ placed at address 0035cd-0035f2 of size 000026
+(build/shell.o unit 0 section index 71)
+    Defines:
+        `_StringLiteral_Usage: set-datetime YY MM DD HH MM SS` = 0035cd
+    Referenced from:
+        (build/shell.o unit 0 section index 29)
+
+`_StringLiteral_Welcome to the R265Nibbler Shell version ` in section 'cdata'
+ placed at address 0035f3-00361c of size 00002a
+(build/shell.o unit 0 section index 73)
+    Defines:
+        `_StringLiteral_Welcome to the R265Nibbler Shell version ` = 0035f3
+    Referenced from:
+        main (build/shell.o unit 0 section index 34)
+
+command_table in section 'cdata'
+ placed at address 00361d-003688 of size 00006c
+(build/shell.o unit 0 section index 35)
+    Defines:
+        command_table = 00361d
+    References:
+        `_StringLiteral_?` in (build/shell.o unit 0 section index 39)
+        _StringLiteral_cls in (build/shell.o unit 0 section index 74)
+        _StringLiteral_copy in (build/shell.o unit 0 section index 75)
+        _StringLiteral_datetime in (build/shell.o unit 0 section index 76)
+        _StringLiteral_del in (build/shell.o unit 0 section index 77)
+        _StringLiteral_dir in (build/shell.o unit 0 section index 78)
+        _StringLiteral_exit in (build/shell.o unit 0 section index 79)
+        _StringLiteral_gfxTest in (build/shell.o unit 0 section index 80)
+        ... 9 more
+    Referenced from:
+        execute_command (build/shell.o unit 0 section index 32)
+
+`_StringLiteral_[65,118,97,105,108,97,98,108,101,58,32,104,101,108,112,32,40,63,41,44,32,99,108,115,44,32,118,101,114,44,32,100,105,114,44,32,100,101,108,44,32,99,111,112,121,44,32,114,101,110,44,13,32,101,120,105,116,44,32,116,121,112,101,44,32,114,117,110,104,101,120,44,32,109,101,109,100,117,109,112,44,32,108,111,97,100,44,32,100,97,116,101,116,105,109,101,44,13,32,103,102,120,84,101,115,116,44,32,115,101,116,45,100,97,116,101,116,105,109,101,44,32,114,117,110,98,105,110]` in section 'cdata'
+ placed at address 003689-003709 of size 000081
+(build/shell.o unit 0 section index 40)
+    Defines:
+        `_StringLiteral_[65,118,97,105,108,97,98,108,101,58,32,104,101,108,112,32,40,63,41,44,32,99,108,115,44,32,118,101,114,44,32,100,105,114,44,32,100,101,108,44,32,99,111,112,121,44,32,114,101,110,44,13,32,101,120,105,116,44,32,116,121,112,101,44,32,114,117,110,104,101,120,44,32,109,101,109,100,117,109,112,44,32,108,111,97,100,44,32,100,97,116,101,116,105,109,101,44,13,32,103,102,120,84,101,115,116,44,32,115,101,116,45,100,97,116,101,116,105,109,101,44,32,114,117,110,98,105,110]` = 003689
+    Referenced from:
+        (build/shell.o unit 0 section index 15)
+
+rehsd_raw_565 in section 'cdata'
+ placed at address 00370a-003f09 of size 000800
+(build/graphics.o unit 1 section index 3)
+    Defines:
+        rehsd_raw_565 = 00370a
+    Referenced from:
+        draw_logo_32_scaled_4x (build/graphics.o unit 1 section index 15)
+
+__program_start in section 'code'
+ placed at address 003f0a-003f22 of size 000019
+(cstartup.o (from clib-lc-sd.a) unit 6 section index 2)
+    Defines:
+        __program_start = 003f0a
+    References:
+        _DirectPageStart
+        .sectionEnd(stack)
+        _Vfp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        __low_level_init in (cstartup.o (from clib-lc-sd.a) unit 6 section index 8)
+    Referenced from:
+        __program_root_section (cstartup.o (from clib-lc-sd.a) unit 6 section index 7)
+
+__data_initialization_needed in section 'code'
+ placed at address 003f23-003f3a of size 000018
+(cstartup.o (from clib-lc-sd.a) unit 6 section index 3)
+    Defines:
+        __data_initialization_needed = 003f23
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+        .sectionEnd(data_init_table)
+        .sectionStart(data_init_table)
+        __initialize_sections in (initialize.o (from clib-lc-sd.a) unit 21 section index 2)
+
+Section 'code'  placed at address 003f3b-003f45 of size 00000b
+(cstartup.o (from clib-lc-sd.a) unit 6 section index 6)
+    References:
+        exit in (exit.o (from clib-lc-sd.a) unit 7 section index 2)
+        main in (build/shell.o unit 0 section index 34)
+
+g_saveptr in section 'zdata'  placed at address 002100-002101 of size 000002
+(lib_strtok.o (from clib-lc-sd.a) unit 17 section index 2)
+
+__atexit_index in section 'zdata'
+ placed at address 002102-002103 of size 000002
+(atexit.o (from clib-lc-sd.a) unit 11 section index 3)
+    Defines:
+        __atexit_index = 002102
+    Referenced from:
+        exit (exit.o (from clib-lc-sd.a) unit 7 section index 2)
+
+__atexit in section 'zdata'  placed at address 002104-002183 of size 000080
+(atexit.o (from clib-lc-sd.a) unit 11 section index 2)
+    Defines:
+        __atexit = 002104
+    Referenced from:
+        exit (exit.o (from clib-lc-sd.a) unit 7 section index 2)
+
+_ExitCloseStreams in section 'zdata'
+ placed at address 002184-002187 of size 000004
+(streamlist.o (from clib-lc-sd.a) unit 15 section index 2)
+    Defines:
+        _ExitCloseStreams = 002184
+    Referenced from:
+        exit (exit.o (from clib-lc-sd.a) unit 7 section index 2)
+
+g_sectors_per_cluster in section 'zdata'
+ placed at address 002188-002188 of size 000001
+(build/filesys.o unit 4 section index 25)
+    Defines:
+        g_sectors_per_cluster = 002188
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+        load_hex_from_sd (build/filesys.o unit 4 section index 43)
+        copy_file (build/filesys.o unit 4 section index 48)
+        load_bin_from_sd (build/filesys.o unit 4 section index 49)
+
+g_data_lba_start in section 'zdata'
+ placed at address 002189-00218c of size 000004
+(build/filesys.o unit 4 section index 24)
+    Defines:
+        g_data_lba_start = 002189
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+        load_hex_from_sd (build/filesys.o unit 4 section index 43)
+        copy_file (build/filesys.o unit 4 section index 48)
+        load_bin_from_sd (build/filesys.o unit 4 section index 49)
+
+g_root_sz_sects in section 'zdata'
+ placed at address 00218d-00218e of size 000002
+(build/filesys.o unit 4 section index 23)
+    Defines:
+        g_root_sz_sects = 00218d
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        list_root_directory (build/filesys.o unit 4 section index 34)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+        delete_file (build/filesys.o unit 4 section index 36)
+        load_hex_from_sd (build/filesys.o unit 4 section index 43)
+        create_directory_entry (build/filesys.o unit 4 section index 46)
+        rename_file (build/filesys.o unit 4 section index 47)
+        copy_file (build/filesys.o unit 4 section index 48)
+        load_bin_from_sd (build/filesys.o unit 4 section index 49)
+
+g_root_lba_start in section 'zdata'
+ placed at address 00218f-002192 of size 000004
+(build/filesys.o unit 4 section index 22)
+    Defines:
+        g_root_lba_start = 00218f
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        list_root_directory (build/filesys.o unit 4 section index 34)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+        delete_file (build/filesys.o unit 4 section index 36)
+        load_hex_from_sd (build/filesys.o unit 4 section index 43)
+        create_directory_entry (build/filesys.o unit 4 section index 46)
+        rename_file (build/filesys.o unit 4 section index 47)
+        copy_file (build/filesys.o unit 4 section index 48)
+        load_bin_from_sd (build/filesys.o unit 4 section index 49)
+
+g_fat_size_sectors in section 'zdata'
+ placed at address 002193-002194 of size 000002
+(build/filesys.o unit 4 section index 19)
+    Defines:
+        g_fat_size_sectors = 002193
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        delete_file (build/filesys.o unit 4 section index 36)
+        allocate_cluster (build/filesys.o unit 4 section index 40)
+        copy_file (build/filesys.o unit 4 section index 48)
+
+g_rsvd_sec_cnt in section 'zdata'
+ placed at address 002195-002196 of size 000002
+(build/filesys.o unit 4 section index 18)
+    Defines:
+        g_rsvd_sec_cnt = 002195
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        delete_file (build/filesys.o unit 4 section index 36)
+        allocate_cluster (build/filesys.o unit 4 section index 40)
+        copy_file (build/filesys.o unit 4 section index 48)
+
+g_partition_lba_start in section 'zdata'
+ placed at address 002197-00219a of size 000004
+(build/filesys.o unit 4 section index 17)
+    Defines:
+        g_partition_lba_start = 002197
+    Referenced from:
+        fat_init (build/filesys.o unit 4 section index 33)
+        delete_file (build/filesys.o unit 4 section index 36)
+        allocate_cluster (build/filesys.o unit 4 section index 40)
+        copy_file (build/filesys.o unit 4 section index 48)
+
+g_fat_initialized in section 'zdata'
+ placed at address 00219b-00219b of size 000001
+(build/filesys.o unit 4 section index 15)
+    Defines:
+        g_fat_initialized = 00219b
+    Referenced from:
+        (build/shell.o unit 0 section index 22)
+        (build/shell.o unit 0 section index 23)
+        (build/shell.o unit 0 section index 26)
+        (build/shell.o unit 0 section index 30)
+        fat_init (build/filesys.o unit 4 section index 33)
+        list_root_directory (build/filesys.o unit 4 section index 34)
+        print_file_contents (build/filesys.o unit 4 section index 35)
+        delete_file (build/filesys.o unit 4 section index 36)
+        rename_file (build/filesys.o unit 4 section index 47)
+        copy_file (build/filesys.o unit 4 section index 48)
+
+record_addr in section 'zdata'  placed at address 00219c-00219d of size 000002
+(build/filesys.o unit 4 section index 14)
+
+record_type in section 'zdata'  placed at address 00219e-00219e of size 000001
+(build/filesys.o unit 4 section index 13)
+
+record_len in section 'zdata'  placed at address 00219f-00219f of size 000001
+(build/filesys.o unit 4 section index 12)
+
+entry_point in section 'zdata'  placed at address 0021a0-0021a3 of size 000004
+(build/filesys.o unit 4 section index 11)
+
+target_bank_offset in section 'zdata'
+ placed at address 0021a4-0021a7 of size 000004
+(build/filesys.o unit 4 section index 10)
+
+file_lba in section 'zdata'  placed at address 0021a8-0021ab of size 000004
+(build/filesys.o unit 4 section index 9)
+
+k in section 'zdata'  placed at address 0021ac-0021ad of size 000002
+(build/filesys.o unit 4 section index 8)
+
+i in section 'zdata'  placed at address 0021ae-0021af of size 000002
+(build/filesys.o unit 4 section index 7)
+
+s in section 'zdata'  placed at address 0021b0-0021b1 of size 000002
+(build/filesys.o unit 4 section index 6)
+
+found in section 'zdata'  placed at address 0021b2-0021b2 of size 000001
+(build/filesys.o unit 4 section index 5)
+
+file_size in section 'zdata'  placed at address 0021b3-0021b6 of size 000004
+(build/filesys.o unit 4 section index 4)
+
+start_cluster in section 'zdata'
+ placed at address 0021b7-0021b8 of size 000002
+(build/filesys.o unit 4 section index 3)
+
+target_fat_name in section 'zdata'
+ placed at address 0021b9-0021c8 of size 000010
+(build/filesys.o unit 4 section index 2)
+    Defines:
+        target_fat_name = 0021b9
+    Referenced from:
+        load_hex_from_sd (build/filesys.o unit 4 section index 43)
+
+idx in section 'zdata'  placed at address 0021c9-0021ca of size 000002
+(build/shell.o unit 0 section index 3)
+
+cmd_line in section 'zdata'  placed at address 0021cb-00220a of size 000040
+(build/shell.o unit 0 section index 2)
+
+Section 'stack'  placed at address 00220b-00320a of size 001000
+(linker generated)
+
+_Dp in section 'registers'  placed at address 002000-002013 of size 000014
+(pseudoRegisters.o (from clib-lc-sd.a) unit 10 section index 2)
+    Defines:
+        _Vfp = 002010
+        _Dp = 002000
+    Referenced from:
+        (build/shell.o unit 0 section index 14)
+        (build/shell.o unit 0 section index 21)
+        (build/shell.o unit 0 section index 22)
+        (build/shell.o unit 0 section index 23)
+        (build/shell.o unit 0 section index 27)
+        (build/shell.o unit 0 section index 28)
+        (build/shell.o unit 0 section index 29)
+        (build/shell.o unit 0 section index 30)
+        ... 59 more
+
+__program_root_section in section 'reset'
+ placed at address 00fffc-00fffd of size 000002
+(cstartup.o (from clib-lc-sd.a) unit 6 section index 7)
+    Defines:
+        __program_root_section = 00fffc
+    References:
+        __program_start in (cstartup.o (from clib-lc-sd.a) unit 6 section index 2)
+
+##########################
+#                        #
+# Memory sizes (decimal) #
+#                        #
+##########################
+
+Executable       (Text): 21789 bytes
+Data                   :   267 bytes
+Non-initialized        :  4116 bytes
