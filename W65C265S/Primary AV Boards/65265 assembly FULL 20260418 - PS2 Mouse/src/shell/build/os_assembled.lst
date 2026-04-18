@@ -1,0 +1,1237 @@
+###############################################################################
+#                                                                             #
+# Calypsi ISO C compiler for 65816                               version 5.15 #
+#                                                       17/Apr/2026  22:59:06 #
+# Command line: --code-model=large --data-model=small -c os.c -o build/os.o   #
+#               --list-file=build/os_assembled.lst                            #
+#                                                                             #
+###############################################################################
+
+    \ 000000                      .rtmodel version,"1"
+    \ 000000                      .rtmodel codeModel,"large"
+    \ 000000                      .rtmodel dataModel,"small"
+    \ 000000                      .rtmodel core,"65816"
+    \ 000000                      .rtmodel huge,"0"
+    \ 000000                      .rtmodel target,"none-specified"
+    \ 000000                      .extern _Dp
+    \ 000000                      .extern _Vfp
+0001                  #include "os.h"
+0002                  #include "../include/calypsi_intellisense_fix.h"
+0003                  
+0004                  
+0005                  void os_draw_rectangle(unsigned short x, unsigned short y, unsigned short width, unsigned short height, unsigned short color, unsigned char filled)
+0006                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_draw_rectangle
+    \ 000000          os_draw_rectangle:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 aa                   tax
+    \ 000003 a5..                 lda     dp:.tiny _Dp
+    \ 000005 8301                 sta     1,s
+    \ 000007 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000009 8303                 sta     3,s
+0007                      
+0008                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0009                      //                                  width_lo, width_hi, height_lo, height_hi, 
+0010                      //                                  color_lo, color_hi, filled
+0011                      // COP_CMD_DRAW_RECTANGLE      .equ  $06
+0012                  
+0013                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 00000b 8a                   txa
+    \ 00000c e220                 sep     #32
+    \ 00000e 8d000f               sta     0xf00
+    \ 000011 c220                 rep     #32
+0014                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 000013 8a                   txa
+    \ 000014 eb                   xba
+    \ 000015 29ff00               and     ##255
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d010f               sta     0xf01
+    \ 00001d c220                 rep     #32
+0015                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8d020f               sta     0xf02
+    \ 000026 c220                 rep     #32
+0016                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 000028 e220                 sep     #32
+    \ 00002a a302                 lda     2,s
+    \ 00002c 8d030f               sta     0xf03
+    \ 00002f c220                 rep     #32
+0017                      SYSCALL_PARAMS.param4  = (unsigned char)(width & 0xFF);
+    \ 000031 e220                 sep     #32
+    \ 000033 a303                 lda     3,s
+    \ 000035 8d040f               sta     0xf04
+    \ 000038 c220                 rep     #32
+0018                      SYSCALL_PARAMS.param5  = (unsigned char)(width >> 8);
+    \ 00003a e220                 sep     #32
+    \ 00003c a304                 lda     4,s
+    \ 00003e 8d050f               sta     0xf05
+    \ 000041 c220                 rep     #32
+0019                      SYSCALL_PARAMS.param6  = (unsigned char)(height & 0xFF);
+    \ 000043 e220                 sep     #32
+    \ 000045 a308                 lda     8,s
+    \ 000047 8d060f               sta     0xf06
+    \ 00004a c220                 rep     #32
+0020                      SYSCALL_PARAMS.param7  = (unsigned char)(height >> 8);
+    \ 00004c e220                 sep     #32
+    \ 00004e a309                 lda     9,s
+    \ 000050 8d070f               sta     0xf07
+    \ 000053 c220                 rep     #32
+0021                      SYSCALL_PARAMS.param8  = (unsigned char)(color & 0xFF);
+    \ 000055 e220                 sep     #32
+    \ 000057 a30a                 lda     10,s
+    \ 000059 8d080f               sta     0xf08
+    \ 00005c c220                 rep     #32
+0022                      SYSCALL_PARAMS.param9  = (unsigned char)(color >> 8);
+    \ 00005e e220                 sep     #32
+    \ 000060 a30b                 lda     11,s
+    \ 000062 8d090f               sta     0xf09
+    \ 000065 c220                 rep     #32
+0023                      SYSCALL_PARAMS.param10 = filled;
+    \ 000067 e220                 sep     #32
+    \ 000069 a30c                 lda     12,s
+    \ 00006b 8d0a0f               sta     0xf0a
+    \ 00006e c220                 rep     #32
+0024                  
+0025                      __asm(" cop #6\n");   // COP #6
+    \ 000070 0206                 cop     #6
+0026                  }
+    \ 000072 7a                   ply
+    \ 000073 7a                   ply
+    \ 000074 6b                   rtl
+0027                  
+0028                  void os_draw_line(unsigned short start_x, unsigned short start_y, unsigned short end_x, unsigned short end_y, unsigned short color)
+0029                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_draw_line
+    \ 000000          os_draw_line:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 aa                   tax
+    \ 000003 a5..                 lda     dp:.tiny _Dp
+    \ 000005 8301                 sta     1,s
+    \ 000007 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000009 8303                 sta     3,s
+0030                      
+0031                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0032                      //                                  width_lo, width_hi, height_lo, height_hi, 
+0033                      //                                  color_lo, color_hi
+0034                  
+0035                      SYSCALL_PARAMS.param0  = (unsigned char)(start_x & 0xFF);
+    \ 00000b 8a                   txa
+    \ 00000c e220                 sep     #32
+    \ 00000e 8d000f               sta     0xf00
+    \ 000011 c220                 rep     #32
+0036                      SYSCALL_PARAMS.param1  = (unsigned char)(start_x >> 8);
+    \ 000013 8a                   txa
+    \ 000014 eb                   xba
+    \ 000015 29ff00               and     ##255
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d010f               sta     0xf01
+    \ 00001d c220                 rep     #32
+0037                      SYSCALL_PARAMS.param2  = (unsigned char)(start_y & 0xFF);
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8d020f               sta     0xf02
+    \ 000026 c220                 rep     #32
+0038                      SYSCALL_PARAMS.param3  = (unsigned char)(start_y >> 8);
+    \ 000028 e220                 sep     #32
+    \ 00002a a302                 lda     2,s
+    \ 00002c 8d030f               sta     0xf03
+    \ 00002f c220                 rep     #32
+0039                      SYSCALL_PARAMS.param4  = (unsigned char)(end_x & 0xFF);
+    \ 000031 e220                 sep     #32
+    \ 000033 a303                 lda     3,s
+    \ 000035 8d040f               sta     0xf04
+    \ 000038 c220                 rep     #32
+0040                      SYSCALL_PARAMS.param5  = (unsigned char)(end_x >> 8);
+    \ 00003a e220                 sep     #32
+    \ 00003c a304                 lda     4,s
+    \ 00003e 8d050f               sta     0xf05
+    \ 000041 c220                 rep     #32
+0041                      SYSCALL_PARAMS.param6  = (unsigned char)(end_y & 0xFF);
+    \ 000043 e220                 sep     #32
+    \ 000045 a308                 lda     8,s
+    \ 000047 8d060f               sta     0xf06
+    \ 00004a c220                 rep     #32
+0042                      SYSCALL_PARAMS.param7  = (unsigned char)(end_y >> 8);
+    \ 00004c e220                 sep     #32
+    \ 00004e a309                 lda     9,s
+    \ 000050 8d070f               sta     0xf07
+    \ 000053 c220                 rep     #32
+0043                      SYSCALL_PARAMS.param8  = (unsigned char)(color & 0xFF);
+    \ 000055 e220                 sep     #32
+    \ 000057 a30a                 lda     10,s
+    \ 000059 8d080f               sta     0xf08
+    \ 00005c c220                 rep     #32
+0044                      SYSCALL_PARAMS.param9  = (unsigned char)(color >> 8);
+    \ 00005e e220                 sep     #32
+    \ 000060 a30b                 lda     11,s
+    \ 000062 8d090f               sta     0xf09
+    \ 000065 c220                 rep     #32
+0045                  
+0046                      __asm(" cop #8\n");
+    \ 000067 0208                 cop     #8
+0047                  }
+    \ 000069 7a                   ply
+    \ 00006a 7a                   ply
+    \ 00006b 6b                   rtl
+0048                  
+0049                  void os_draw_circle(unsigned short x, unsigned short y, unsigned short radius, unsigned short color, unsigned char filled)
+0050                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_draw_circle
+    \ 000000          os_draw_circle:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 aa                   tax
+    \ 000003 a5..                 lda     dp:.tiny _Dp
+    \ 000005 8301                 sta     1,s
+    \ 000007 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000009 8303                 sta     3,s
+0051                      
+0052                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0053                      //                                  radius_lo, radius_hi,   (height_lo, height_hi,  NOT USED)
+0054                      //                                  color_lo, color_hi, filled
+0055                  
+0056                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 00000b 8a                   txa
+    \ 00000c e220                 sep     #32
+    \ 00000e 8d000f               sta     0xf00
+    \ 000011 c220                 rep     #32
+0057                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 000013 8a                   txa
+    \ 000014 eb                   xba
+    \ 000015 29ff00               and     ##255
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d010f               sta     0xf01
+    \ 00001d c220                 rep     #32
+0058                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8d020f               sta     0xf02
+    \ 000026 c220                 rep     #32
+0059                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 000028 e220                 sep     #32
+    \ 00002a a302                 lda     2,s
+    \ 00002c 8d030f               sta     0xf03
+    \ 00002f c220                 rep     #32
+0060                      SYSCALL_PARAMS.param4  = (unsigned char)(radius & 0xFF);
+    \ 000031 e220                 sep     #32
+    \ 000033 a303                 lda     3,s
+    \ 000035 8d040f               sta     0xf04
+    \ 000038 c220                 rep     #32
+0061                      SYSCALL_PARAMS.param5  = (unsigned char)(radius >> 8);
+    \ 00003a e220                 sep     #32
+    \ 00003c a304                 lda     4,s
+    \ 00003e 8d050f               sta     0xf05
+    \ 000041 c220                 rep     #32
+0062                      // SYSCALL_PARAMS.param6  = (unsigned char)(height & 0xFF);
+0063                      // SYSCALL_PARAMS.param7  = (unsigned char)(height >> 8);
+0064                      SYSCALL_PARAMS.param8  = (unsigned char)(color & 0xFF);
+    \ 000043 e220                 sep     #32
+    \ 000045 a308                 lda     8,s
+    \ 000047 8d080f               sta     0xf08
+    \ 00004a c220                 rep     #32
+0065                      SYSCALL_PARAMS.param9  = (unsigned char)(color >> 8);
+    \ 00004c e220                 sep     #32
+    \ 00004e a309                 lda     9,s
+    \ 000050 8d090f               sta     0xf09
+    \ 000053 c220                 rep     #32
+0066                      SYSCALL_PARAMS.param10 = filled;
+    \ 000055 e220                 sep     #32
+    \ 000057 a30a                 lda     10,s
+    \ 000059 8d0a0f               sta     0xf0a
+    \ 00005c c220                 rep     #32
+0067                  
+0068                      __asm(" cop #7\n");
+    \ 00005e 0207                 cop     #7
+0069                  }
+    \ 000060 7a                   ply
+    \ 000061 7a                   ply
+    \ 000062 6b                   rtl
+0070                  
+0071                  void os_draw_pixel(unsigned short x, unsigned short y, unsigned short color)
+0072                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_draw_pixel
+    \ 000000          os_draw_pixel:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 aa                   tax
+    \ 000003 a5..                 lda     dp:.tiny _Dp
+    \ 000005 8301                 sta     1,s
+    \ 000007 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000009 8303                 sta     3,s
+0073                      
+0074                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0075                      //                                  color_lo, color_hi
+0076                  
+0077                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 00000b 8a                   txa
+    \ 00000c e220                 sep     #32
+    \ 00000e 8d000f               sta     0xf00
+    \ 000011 c220                 rep     #32
+0078                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 000013 8a                   txa
+    \ 000014 eb                   xba
+    \ 000015 29ff00               and     ##255
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d010f               sta     0xf01
+    \ 00001d c220                 rep     #32
+0079                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8d020f               sta     0xf02
+    \ 000026 c220                 rep     #32
+0080                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 000028 e220                 sep     #32
+    \ 00002a a302                 lda     2,s
+    \ 00002c 8d030f               sta     0xf03
+    \ 00002f c220                 rep     #32
+0081                      // SYSCALL_PARAMS.param4  = (unsigned char)(radius & 0xFF);
+0082                      // SYSCALL_PARAMS.param5  = (unsigned char)(radius >> 8);
+0083                      // SYSCALL_PARAMS.param6  = (unsigned char)(height & 0xFF);
+0084                      // SYSCALL_PARAMS.param7  = (unsigned char)(height >> 8);
+0085                      SYSCALL_PARAMS.param8  = (unsigned char)(color & 0xFF);
+    \ 000031 e220                 sep     #32
+    \ 000033 a303                 lda     3,s
+    \ 000035 8d080f               sta     0xf08
+    \ 000038 c220                 rep     #32
+0086                      SYSCALL_PARAMS.param9  = (unsigned char)(color >> 8);
+    \ 00003a e220                 sep     #32
+    \ 00003c a304                 lda     4,s
+    \ 00003e 8d090f               sta     0xf09
+    \ 000041 c220                 rep     #32
+0087                      // SYSCALL_PARAMS.param10 = filled;
+0088                  
+0089                      __asm(" cop #9\n");
+    \ 000043 0209                 cop     #9
+0090                  }
+    \ 000045 7a                   ply
+    \ 000046 7a                   ply
+    \ 000047 6b                   rtl
+0091                  
+0092                  void os_draw_diamond(unsigned short x, unsigned short y, unsigned short radius, unsigned short color, unsigned char filled)
+0093                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_draw_diamond
+    \ 000000          os_draw_diamond:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 aa                   tax
+    \ 000003 a5..                 lda     dp:.tiny _Dp
+    \ 000005 8301                 sta     1,s
+    \ 000007 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000009 8303                 sta     3,s
+0094                      
+0095                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0096                      //                                  radius_lo, radius_hi,   (height_lo, height_hi,  NOT USED)
+0097                      //                                  color_lo, color_hi, filled
+0098                  
+0099                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 00000b 8a                   txa
+    \ 00000c e220                 sep     #32
+    \ 00000e 8d000f               sta     0xf00
+    \ 000011 c220                 rep     #32
+0100                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 000013 8a                   txa
+    \ 000014 eb                   xba
+    \ 000015 29ff00               and     ##255
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d010f               sta     0xf01
+    \ 00001d c220                 rep     #32
+0101                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8d020f               sta     0xf02
+    \ 000026 c220                 rep     #32
+0102                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 000028 e220                 sep     #32
+    \ 00002a a302                 lda     2,s
+    \ 00002c 8d030f               sta     0xf03
+    \ 00002f c220                 rep     #32
+0103                      SYSCALL_PARAMS.param4  = (unsigned char)(radius & 0xFF);
+    \ 000031 e220                 sep     #32
+    \ 000033 a303                 lda     3,s
+    \ 000035 8d040f               sta     0xf04
+    \ 000038 c220                 rep     #32
+0104                      SYSCALL_PARAMS.param5  = (unsigned char)(radius >> 8);
+    \ 00003a e220                 sep     #32
+    \ 00003c a304                 lda     4,s
+    \ 00003e 8d050f               sta     0xf05
+    \ 000041 c220                 rep     #32
+0105                      // SYSCALL_PARAMS.param6  = (unsigned char)(height & 0xFF);
+0106                      // SYSCALL_PARAMS.param7  = (unsigned char)(height >> 8);
+0107                      SYSCALL_PARAMS.param8  = (unsigned char)(color & 0xFF);
+    \ 000043 e220                 sep     #32
+    \ 000045 a308                 lda     8,s
+    \ 000047 8d080f               sta     0xf08
+    \ 00004a c220                 rep     #32
+0108                      SYSCALL_PARAMS.param9  = (unsigned char)(color >> 8);
+    \ 00004c e220                 sep     #32
+    \ 00004e a309                 lda     9,s
+    \ 000050 8d090f               sta     0xf09
+    \ 000053 c220                 rep     #32
+0109                      SYSCALL_PARAMS.param10 = filled;
+    \ 000055 e220                 sep     #32
+    \ 000057 a30a                 lda     10,s
+    \ 000059 8d0a0f               sta     0xf0a
+    \ 00005c c220                 rep     #32
+0110                  
+0111                      __asm(" cop #0x16\n");
+    \ 00005e 0216                 cop     #22
+0112                  }
+    \ 000060 7a                   ply
+    \ 000061 7a                   ply
+    \ 000062 6b                   rtl
+0113                  
+0114                  void os_print_char(char c)
+0115                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_print_char
+    \ 000000          os_print_char:
+0116                      SYSCALL_PARAMS_START = c;   // store to $0F00 in C
+    \ 000000 e220                 sep     #32
+    \ 000002 8d000f               sta     0xf00
+    \ 000005 c220                 rep     #32
+0117                      __asm(" cop #1\n");   // COP #1
+    \ 000007 0201                 cop     #1
+0118                  }
+    \ 000009 6b                   rtl
+0119                  
+0120                  void os_newline(void)
+0121                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_newline
+    \ 000000          os_newline:
+0122                      __asm(" cop #2\n");   // COP #2
+    \ 000000 0202                 cop     #2
+0123                  }
+    \ 000002 6b                   rtl
+0124                  
+0125                  void os_newline_with_prompt(void)
+0126                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_newline_with_prompt
+    \ 000000          os_newline_with_prompt:
+0127                      __asm(" cop #2\n");   // COP #2
+    \ 000000 0202                 cop     #2
+0128                      os_print_char('$');
+    \ 000002 a92400               lda     ##36
+    \ 000005 22......             jsl     long:os_print_char
+0129                  }
+    \ 000009 6b                   rtl
+0130                  
+0131                  void os_debug_mark(void)
+0132                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_debug_mark
+    \ 000000          os_debug_mark:
+0133                      __asm(" cop #3\n");   // COP #3
+    \ 000000 0203                 cop     #3
+0134                  }
+    \ 000002 6b                   rtl
+0135                  
+0136                  void os_debug_mark2(void)
+0137                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_debug_mark2
+    \ 000000          os_debug_mark2:
+0138                      __asm(" cop #4\n");   // COP #3
+    \ 000000 0204                 cop     #4
+0139                  }
+    \ 000002 6b                   rtl
+0140                  
+0141                  void os_c_return(void)
+0142                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_c_return
+    \ 000000          os_c_return:
+0143                      //to do: any cleanup needed before returning to '265?
+0144                      __asm(" cop #5\n");   // COP #5
+    \ 000000 0205                 cop     #5
+0145                  }
+    \ 000002 6b                   rtl
+0146                  
+0147                  void os_puts(const char* s)
+0148                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_puts
+    \ 000000 5a       os_puts:    phy
+    \ 000001 5a                   phy
+0149                      while (*s) {
+    \ 000002 aa                   tax
+    \ 000003 e220     `?L37`:     sep     #32
+    \ 000005 bd0000               lda     0,x
+    \ 000008 c220                 rep     #32
+    \ 00000a f018                 beq     `?L38`
+0150                          os_print_char(*s++);
+    \ 00000c e220                 sep     #32
+    \ 00000e bd0000               lda     0,x
+    \ 000011 8301                 sta     1,s
+    \ 000013 c220                 rep     #32
+    \ 000015 8a                   txa
+    \ 000016 1a                   inc     a
+    \ 000017 8302                 sta     2,s
+    \ 000019 a301                 lda     1,s
+    \ 00001b 22......             jsl     long:os_print_char
+    \ 00001f a302                 lda     2,s
+    \ 000021 aa                   tax
+    \ 000022 80df                 bra     `?L37`
+    \ 000024          `?L38`:
+0151                      }
+0152                  }
+    \ 000024 7a                   ply
+    \ 000025 7a                   ply
+    \ 000026 6b                   rtl
+0153                  
+0154                  void os_clear_screen(void)
+0155                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_clear_screen
+    \ 000000          os_clear_screen:
+0156                      __asm(" cop #0x11\n");
+    \ 000000 0211                 cop     #17
+0157                  }
+    \ 000002 6b                   rtl
+0158                  
+0159                  void os_print_char_serial(char c)
+0160                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_print_char_serial
+    \ 000000          os_print_char_serial:
+0161                      SYSCALL_PARAMS_START = c;   // store to $0F00 in C
+    \ 000000 e220                 sep     #32
+    \ 000002 8d000f               sta     0xf00
+    \ 000005 c220                 rep     #32
+0162                      __asm(" cop #0x12\n"); 
+    \ 000007 0212                 cop     #18
+0163                  }
+    \ 000009 6b                   rtl
+0164                  
+0165                  void os_newline_serial(void)
+0166                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_newline_serial
+    \ 000000          os_newline_serial:
+0167                      __asm(" cop #0x13\n");
+    \ 000000 0213                 cop     #19
+0168                  }
+    \ 000002 6b                   rtl
+0169                  
+0170                  void os_puts_serial(const char* s)
+0171                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_puts_serial
+    \ 000000          os_puts_serial:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+0172                      while (*s) {
+    \ 000002 aa                   tax
+    \ 000003 e220     `?L52`:     sep     #32
+    \ 000005 bd0000               lda     0,x
+    \ 000008 c220                 rep     #32
+    \ 00000a f018                 beq     `?L53`
+0173                          os_print_char_serial(*s++);
+    \ 00000c e220                 sep     #32
+    \ 00000e bd0000               lda     0,x
+    \ 000011 8301                 sta     1,s
+    \ 000013 c220                 rep     #32
+    \ 000015 8a                   txa
+    \ 000016 1a                   inc     a
+    \ 000017 8302                 sta     2,s
+    \ 000019 a301                 lda     1,s
+    \ 00001b 22......             jsl     long:os_print_char_serial
+    \ 00001f a302                 lda     2,s
+    \ 000021 aa                   tax
+    \ 000022 80df                 bra     `?L52`
+    \ 000024          `?L53`:
+0174                      }
+0175                  }
+    \ 000024 7a                   ply
+    \ 000025 7a                   ply
+    \ 000026 6b                   rtl
+0176                  
+0177                  unsigned char os_kbd_get_char()
+0178                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_kbd_get_char
+    \ 000000          os_kbd_get_char:
+0179                      __asm(" cop #0x10\n");
+    \ 000000 0210                 cop     #16
+0180                      return SYSCALL_PARAMS_RESULT;
+    \ 000002 e220                 sep     #32
+    \ 000004 adfe0f               lda     0xffe
+    \ 000007 c220                 rep     #32
+0181                  }
+    \ 000009 6b                   rtl
+0182                  
+0183                  char os_kbd_wait_for_key() {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_kbd_wait_for_key
+    \ 000000          os_kbd_wait_for_key:
+    \ 000000 5a                   phy
+0184                      char c = 0;
+    \ 000001 e220                 sep     #32
+    \ 000003 a900                 lda     #0
+    \ 000005 8301                 sta     1,s
+    \ 000007 c220                 rep     #32
+    \ 000009          `?L62`:
+0185                      
+0186                      // Clear any stale characters in the buffer first
+0187                      while(os_kbd_get_char() != 0);
+    \ 000009 22......             jsl     long:os_kbd_get_char
+    \ 00000d 29ff00               and     ##255
+    \ 000010 d0f7                 bne     `?L62`
+0188                  
+0189                      // Block here until a key is actually pressed
+0190                      while (c == 0) {
+    \ 000012 e220                 sep     #32
+    \ 000014 a301                 lda     1,s
+    \ 000016 8301                 sta     1,s
+    \ 000018 c220                 rep     #32
+    \ 00001a e220     `?L65`:     sep     #32
+    \ 00001c a301                 lda     1,s
+    \ 00001e c220                 rep     #32
+    \ 000020 d014                 bne     `?L66`
+0191                          c = os_kbd_get_char();
+    \ 000022 22......             jsl     long:os_kbd_get_char
+    \ 000026 e220                 sep     #32
+    \ 000028 8301                 sta     1,s
+    \ 00002a c220                 rep     #32
+    \ 00002c e220                 sep     #32
+    \ 00002e a301                 lda     1,s
+    \ 000030 8301                 sta     1,s
+    \ 000032 c220                 rep     #32
+    \ 000034 80e4                 bra     `?L65`
+    \ 000036          `?L66`:
+    \ 000036          `?L68`:
+0192                      }
+0193                      
+0194                      // Clear any stale characters in the buffer first
+0195                      while(os_kbd_get_char() != 0);
+    \ 000036 22......             jsl     long:os_kbd_get_char
+    \ 00003a 29ff00               and     ##255
+    \ 00003d d0f7                 bne     `?L68`
+0196                  
+0197                      return c;
+    \ 00003f a301                 lda     1,s
+0198                  }
+    \ 000041 7a                   ply
+    \ 000042 6b                   rtl
+0199                  
+0200                  void os_set_char_xy(unsigned short x, unsigned short y)
+0201                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_set_char_xy
+    \ 000000          os_set_char_xy:
+    \ 000000 aa                   tax
+    \ 000001 a4..                 ldy     dp:.tiny _Dp
+0202                      SYSCALL_PARAMS.param0 = (unsigned char)(x & 0xFF);
+    \ 000003 8a                   txa
+    \ 000004 e220                 sep     #32
+    \ 000006 8d000f               sta     0xf00
+    \ 000009 c220                 rep     #32
+0203                      SYSCALL_PARAMS.param1 = (unsigned char)(x >> 8);
+    \ 00000b 8a                   txa
+    \ 00000c eb                   xba
+    \ 00000d 29ff00               and     ##255
+    \ 000010 e220                 sep     #32
+    \ 000012 8d010f               sta     0xf01
+    \ 000015 c220                 rep     #32
+0204                      SYSCALL_PARAMS.param2 = (unsigned char)(y & 0xFF);
+    \ 000017 98                   tya
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d020f               sta     0xf02
+    \ 00001d c220                 rep     #32
+0205                      SYSCALL_PARAMS.param3 = (unsigned char)(y >> 8);
+    \ 00001f 98                   tya
+    \ 000020 eb                   xba
+    \ 000021 29ff00               and     ##255
+    \ 000024 e220                 sep     #32
+    \ 000026 8d030f               sta     0xf03
+    \ 000029 c220                 rep     #32
+0206                  
+0207                      __asm(" cop #0x0A\n");
+    \ 00002b 020a                 cop     #10
+0208                  }
+    \ 00002d 6b                   rtl
+0209                  
+0210                  void os_set_char_color(unsigned short newColor){
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_set_char_color
+    \ 000000          os_set_char_color:
+0211                      SYSCALL_PARAMS_START = newColor;   // store to $0F00 in C
+    \ 000000 e220                 sep     #32
+    \ 000002 8d000f               sta     0xf00
+    \ 000005 c220                 rep     #32
+0212                      __asm(" cop #0x17\n");   // COP #1
+    \ 000007 0217                 cop     #23
+0213                  }
+    \ 000009 6b                   rtl
+0214                  
+0215                  void os_draw_sprite32(unsigned short x, unsigned short y, unsigned short sprite_id)
+0216                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_draw_sprite32
+    \ 000000          os_draw_sprite32:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 aa                   tax
+    \ 000003 a5..                 lda     dp:.tiny _Dp
+    \ 000005 8301                 sta     1,s
+    \ 000007 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000009 8303                 sta     3,s
+0217                      
+0218                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0219                      //                                  sprite_id_lo, sprite_id_hi
+0220                  
+0221                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 00000b 8a                   txa
+    \ 00000c e220                 sep     #32
+    \ 00000e 8d000f               sta     0xf00
+    \ 000011 c220                 rep     #32
+0222                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 000013 8a                   txa
+    \ 000014 eb                   xba
+    \ 000015 29ff00               and     ##255
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d010f               sta     0xf01
+    \ 00001d c220                 rep     #32
+0223                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8d020f               sta     0xf02
+    \ 000026 c220                 rep     #32
+0224                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 000028 e220                 sep     #32
+    \ 00002a a302                 lda     2,s
+    \ 00002c 8d030f               sta     0xf03
+    \ 00002f c220                 rep     #32
+0225                      SYSCALL_PARAMS.param4  = (unsigned char)(sprite_id & 0xFF);
+    \ 000031 e220                 sep     #32
+    \ 000033 a303                 lda     3,s
+    \ 000035 8d040f               sta     0xf04
+    \ 000038 c220                 rep     #32
+0226                      SYSCALL_PARAMS.param5  = (unsigned char)(sprite_id >> 8);
+    \ 00003a e220                 sep     #32
+    \ 00003c a304                 lda     4,s
+    \ 00003e 8d050f               sta     0xf05
+    \ 000041 c220                 rep     #32
+0227                  
+0228                      __asm(" cop #0x18\n");
+    \ 000043 0218                 cop     #24
+0229                  }
+    \ 000045 7a                   ply
+    \ 000046 7a                   ply
+    \ 000047 6b                   rtl
+0230                  
+0231                  void os_draw_sprite16(unsigned short x, unsigned short y, unsigned short sprite_id)
+0232                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_draw_sprite16
+    \ 000000          os_draw_sprite16:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 aa                   tax
+    \ 000003 a5..                 lda     dp:.tiny _Dp
+    \ 000005 8301                 sta     1,s
+    \ 000007 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000009 8303                 sta     3,s
+0233                      
+0234                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0235                      //                                  sprite_id_lo, sprite_id_hi
+0236                  
+0237                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 00000b 8a                   txa
+    \ 00000c e220                 sep     #32
+    \ 00000e 8d000f               sta     0xf00
+    \ 000011 c220                 rep     #32
+0238                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 000013 8a                   txa
+    \ 000014 eb                   xba
+    \ 000015 29ff00               and     ##255
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d010f               sta     0xf01
+    \ 00001d c220                 rep     #32
+0239                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8d020f               sta     0xf02
+    \ 000026 c220                 rep     #32
+0240                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 000028 e220                 sep     #32
+    \ 00002a a302                 lda     2,s
+    \ 00002c 8d030f               sta     0xf03
+    \ 00002f c220                 rep     #32
+0241                      SYSCALL_PARAMS.param4  = (unsigned char)(sprite_id & 0xFF);
+    \ 000031 e220                 sep     #32
+    \ 000033 a303                 lda     3,s
+    \ 000035 8d040f               sta     0xf04
+    \ 000038 c220                 rep     #32
+0242                      SYSCALL_PARAMS.param5  = (unsigned char)(sprite_id >> 8);
+    \ 00003a e220                 sep     #32
+    \ 00003c a304                 lda     4,s
+    \ 00003e 8d050f               sta     0xf05
+    \ 000041 c220                 rep     #32
+0243                  
+0244                      __asm(" cop #0x19\n");
+    \ 000043 0219                 cop     #25
+0245                  }
+    \ 000045 7a                   ply
+    \ 000046 7a                   ply
+    \ 000047 6b                   rtl
+0246                  
+0247                  void os_tile_backup_16(unsigned short x, unsigned short y)
+0248                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_tile_backup_16
+    \ 000000          os_tile_backup_16:
+    \ 000000 aa                   tax
+    \ 000001 a4..                 ldy     dp:.tiny _Dp
+0249                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0250                  
+0251                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 000003 8a                   txa
+    \ 000004 e220                 sep     #32
+    \ 000006 8d000f               sta     0xf00
+    \ 000009 c220                 rep     #32
+0252                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 00000b 8a                   txa
+    \ 00000c eb                   xba
+    \ 00000d 29ff00               and     ##255
+    \ 000010 e220                 sep     #32
+    \ 000012 8d010f               sta     0xf01
+    \ 000015 c220                 rep     #32
+0253                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 000017 98                   tya
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d020f               sta     0xf02
+    \ 00001d c220                 rep     #32
+0254                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 00001f 98                   tya
+    \ 000020 eb                   xba
+    \ 000021 29ff00               and     ##255
+    \ 000024 e220                 sep     #32
+    \ 000026 8d030f               sta     0xf03
+    \ 000029 c220                 rep     #32
+0255                  
+0256                      __asm(" cop #0x1B\n");
+    \ 00002b 021b                 cop     #27
+0257                  }
+    \ 00002d 6b                   rtl
+0258                  
+0259                  void os_tile_backup_32(unsigned short x, unsigned short y)
+0260                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_tile_backup_32
+    \ 000000          os_tile_backup_32:
+    \ 000000 aa                   tax
+    \ 000001 a4..                 ldy     dp:.tiny _Dp
+0261                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0262                  
+0263                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 000003 8a                   txa
+    \ 000004 e220                 sep     #32
+    \ 000006 8d000f               sta     0xf00
+    \ 000009 c220                 rep     #32
+0264                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 00000b 8a                   txa
+    \ 00000c eb                   xba
+    \ 00000d 29ff00               and     ##255
+    \ 000010 e220                 sep     #32
+    \ 000012 8d010f               sta     0xf01
+    \ 000015 c220                 rep     #32
+0265                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 000017 98                   tya
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d020f               sta     0xf02
+    \ 00001d c220                 rep     #32
+0266                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 00001f 98                   tya
+    \ 000020 eb                   xba
+    \ 000021 29ff00               and     ##255
+    \ 000024 e220                 sep     #32
+    \ 000026 8d030f               sta     0xf03
+    \ 000029 c220                 rep     #32
+0267                  
+0268                      __asm(" cop #0x1A\n");
+    \ 00002b 021a                 cop     #26
+0269                  }
+    \ 00002d 6b                   rtl
+0270                  
+0271                  void os_tile_restore_16(unsigned short x, unsigned short y)
+0272                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_tile_restore_16
+    \ 000000          os_tile_restore_16:
+    \ 000000 aa                   tax
+    \ 000001 a4..                 ldy     dp:.tiny _Dp
+0273                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0274                  
+0275                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 000003 8a                   txa
+    \ 000004 e220                 sep     #32
+    \ 000006 8d000f               sta     0xf00
+    \ 000009 c220                 rep     #32
+0276                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 00000b 8a                   txa
+    \ 00000c eb                   xba
+    \ 00000d 29ff00               and     ##255
+    \ 000010 e220                 sep     #32
+    \ 000012 8d010f               sta     0xf01
+    \ 000015 c220                 rep     #32
+0277                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 000017 98                   tya
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d020f               sta     0xf02
+    \ 00001d c220                 rep     #32
+0278                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 00001f 98                   tya
+    \ 000020 eb                   xba
+    \ 000021 29ff00               and     ##255
+    \ 000024 e220                 sep     #32
+    \ 000026 8d030f               sta     0xf03
+    \ 000029 c220                 rep     #32
+0279                  
+0280                      __asm(" cop #0x1D\n");
+    \ 00002b 021d                 cop     #29
+0281                  }
+    \ 00002d 6b                   rtl
+0282                  
+0283                  void os_tile_restore_32(unsigned short x, unsigned short y)
+0284                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_tile_restore_32
+    \ 000000          os_tile_restore_32:
+    \ 000000 aa                   tax
+    \ 000001 a4..                 ldy     dp:.tiny _Dp
+0285                      // Before calling, SYSCALL_PARAMS:  start_x_lo, start_x_hi, start_y_lo, start_y_hi, 
+0286                  
+0287                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 000003 8a                   txa
+    \ 000004 e220                 sep     #32
+    \ 000006 8d000f               sta     0xf00
+    \ 000009 c220                 rep     #32
+0288                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 00000b 8a                   txa
+    \ 00000c eb                   xba
+    \ 00000d 29ff00               and     ##255
+    \ 000010 e220                 sep     #32
+    \ 000012 8d010f               sta     0xf01
+    \ 000015 c220                 rep     #32
+0289                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 000017 98                   tya
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d020f               sta     0xf02
+    \ 00001d c220                 rep     #32
+0290                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 00001f 98                   tya
+    \ 000020 eb                   xba
+    \ 000021 29ff00               and     ##255
+    \ 000024 e220                 sep     #32
+    \ 000026 8d030f               sta     0xf03
+    \ 000029 c220                 rep     #32
+0291                  
+0292                      __asm(" cop #0x1C\n");
+    \ 00002b 021c                 cop     #28
+0293                  }
+    \ 00002d 6b                   rtl
+0294                  
+0295                  char mouse_read_byte_c() {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public mouse_read_byte_c
+    \ 000000          mouse_read_byte_c:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+0296                      char data = 0;
+    \ 000002 e220                 sep     #32
+    \ 000004 a900                 lda     #0
+    \ 000006 8301                 sta     1,s
+    \ 000008 c220                 rep     #32
+    \ 00000a          `?L99`:
+0297                      
+0298                      // 1. Wait for Start Bit (Clock low)
+0299                      while (VIA2_PORTB & 0x80); 
+    \ 00000a e220                 sep     #32
+    \ 00000c af0000e0             lda     long:0xe00000
+    \ 000010 c220                 rep     #32
+    \ 000012 85..                 sta     dp:.tiny _Dp
+    \ 000014 e220                 sep     #32
+    \ 000016 a5..                 lda     dp:.tiny _Dp
+    \ 000018 c220                 rep     #32
+    \ 00001a 30ee                 bmi     `?L99`
+0300                  
+0301                      // 2. Read 8 Data Bits
+0302                      for (int i = 0; i < 8; i++) {
+    \ 00001c a00000               ldy     ##0
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8301                 sta     1,s
+    \ 000025 c220                 rep     #32
+    \ 000027 98       `?L103`:    tya
+    \ 000028 38                   sec
+    \ 000029 e90800               sbc     ##8
+    \ 00002c 5003                 bvc     `?L143`
+    \ 00002e 490080               eor     ##-32768
+    \ 000031 304d     `?L143`:    bmi     `?L102`
+    \ 000033          `?L115`:
+0303                          // Wait for Clock High
+0304                          while (!(VIA2_PORTB & 0x80));
+0305                          // Wait for Clock Low (Data is stable here)
+0306                          while (VIA2_PORTB & 0x80);
+0307                          
+0308                          data >>= 1;
+0309                          if (VIA2_PORTB & 0x40) { // Check PB6
+0310                              data |= 0x80;
+0311                          }
+0312                      }
+0313                  
+0314                      // 3. Skip Parity bit
+0315                      while (!(VIA2_PORTB & 0x80));
+    \ 000033 e220                 sep     #32
+    \ 000035 af0000e0             lda     long:0xe00000
+    \ 000039 c220                 rep     #32
+    \ 00003b 85..                 sta     dp:.tiny _Dp
+    \ 00003d e220                 sep     #32
+    \ 00003f a5..                 lda     dp:.tiny _Dp
+    \ 000041 c220                 rep     #32
+    \ 000043 10ee                 bpl     `?L115`
+    \ 000045          `?L118`:
+0316                      while (VIA2_PORTB & 0x80);
+    \ 000045 e220                 sep     #32
+    \ 000047 af0000e0             lda     long:0xe00000
+    \ 00004b c220                 rep     #32
+    \ 00004d 85..                 sta     dp:.tiny _Dp
+    \ 00004f e220                 sep     #32
+    \ 000051 a5..                 lda     dp:.tiny _Dp
+    \ 000053 c220                 rep     #32
+    \ 000055 30ee                 bmi     `?L118`
+    \ 000057          `?L121`:
+0317                  
+0318                      // 4. Skip Stop bit
+0319                      while (!(VIA2_PORTB & 0x80));
+    \ 000057 e220                 sep     #32
+    \ 000059 af0000e0             lda     long:0xe00000
+    \ 00005d c220                 rep     #32
+    \ 00005f 85..                 sta     dp:.tiny _Dp
+    \ 000061 e220                 sep     #32
+    \ 000063 a5..                 lda     dp:.tiny _Dp
+    \ 000065 c220                 rep     #32
+    \ 000067 10ee                 bpl     `?L121`
+    \ 000069          `?L124`:
+0320                      while (VIA2_PORTB & 0x80);
+    \ 000069 e220                 sep     #32
+    \ 00006b af0000e0             lda     long:0xe00000
+    \ 00006f c220                 rep     #32
+    \ 000071 85..                 sta     dp:.tiny _Dp
+    \ 000073 e220                 sep     #32
+    \ 000075 a5..                 lda     dp:.tiny _Dp
+    \ 000077 c220                 rep     #32
+    \ 000079 30ee                 bmi     `?L124`
+0321                  
+0322                      return data;
+    \ 00007b a301                 lda     1,s
+0323                  }
+    \ 00007d 7a                   ply
+    \ 00007e 7a                   ply
+    \ 00007f 6b                   rtl
+    \ 000080          `?L102`:
+    \ 000080 e220     `?L106`:    sep     #32
+    \ 000082 af0000e0             lda     long:0xe00000
+    \ 000086 c220                 rep     #32
+    \ 000088 85..                 sta     dp:.tiny _Dp
+    \ 00008a e220                 sep     #32
+    \ 00008c a5..                 lda     dp:.tiny _Dp
+    \ 00008e c220                 rep     #32
+    \ 000090 10ee                 bpl     `?L106`
+    \ 000092 e220     `?L109`:    sep     #32
+    \ 000094 af0000e0             lda     long:0xe00000
+    \ 000098 c220                 rep     #32
+    \ 00009a 85..                 sta     dp:.tiny _Dp
+    \ 00009c e220                 sep     #32
+    \ 00009e a5..                 lda     dp:.tiny _Dp
+    \ 0000a0 c220                 rep     #32
+    \ 0000a2 30ee                 bmi     `?L109`
+    \ 0000a4 3b                   tsc
+    \ 0000a5 1a                   inc     a
+    \ 0000a6 aa                   tax
+    \ 0000a7 e220                 sep     #32
+    \ 0000a9 5e0000               lsr     0,x
+    \ 0000ac c220                 rep     #32
+    \ 0000ae e220                 sep     #32
+    \ 0000b0 af0000e0             lda     long:0xe00000
+    \ 0000b4 c220                 rep     #32
+    \ 0000b6 894000               bit     ##64
+    \ 0000b9 f014                 beq     `?L112`
+    \ 0000bb e220                 sep     #32
+    \ 0000bd a980                 lda     #-128
+    \ 0000bf 0301                 ora     1,s
+    \ 0000c1 8301                 sta     1,s
+    \ 0000c3 c220                 rep     #32
+    \ 0000c5 e220                 sep     #32
+    \ 0000c7 a301                 lda     1,s
+    \ 0000c9 8301                 sta     1,s
+    \ 0000cb c220                 rep     #32
+    \ 0000cd 8008                 bra     `?L113`
+    \ 0000cf e220     `?L112`:    sep     #32
+    \ 0000d1 a301                 lda     1,s
+    \ 0000d3 8301                 sta     1,s
+    \ 0000d5 c220                 rep     #32
+    \ 0000d7 98       `?L113`:    tya
+    \ 0000d8 1a                   inc     a
+    \ 0000d9 8302                 sta     2,s
+    \ 0000db e220                 sep     #32
+    \ 0000dd a301                 lda     1,s
+    \ 0000df 8301                 sta     1,s
+    \ 0000e1 c220                 rep     #32
+    \ 0000e3 a302                 lda     2,s
+    \ 0000e5 a8                   tay
+    \ 0000e6 4c....               jmp     .kbank `?L103`
+0324                  
+0325                  void os_draw_sprite8(unsigned short x, unsigned short y, unsigned short sprite_id)
+0326                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_draw_sprite8
+    \ 000000          os_draw_sprite8:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 aa                   tax
+    \ 000003 a5..                 lda     dp:.tiny _Dp
+    \ 000005 8301                 sta     1,s
+    \ 000007 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000009 8303                 sta     3,s
+0327                      // SYSCALL_PARAMS: start_x_lo, start_x_hi, start_y_lo, start_y_hi, sprite_id_lo, sprite_id_hi
+0328                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 00000b 8a                   txa
+    \ 00000c e220                 sep     #32
+    \ 00000e 8d000f               sta     0xf00
+    \ 000011 c220                 rep     #32
+0329                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 000013 8a                   txa
+    \ 000014 eb                   xba
+    \ 000015 29ff00               and     ##255
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d010f               sta     0xf01
+    \ 00001d c220                 rep     #32
+0330                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 00001f e220                 sep     #32
+    \ 000021 a301                 lda     1,s
+    \ 000023 8d020f               sta     0xf02
+    \ 000026 c220                 rep     #32
+0331                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 000028 e220                 sep     #32
+    \ 00002a a302                 lda     2,s
+    \ 00002c 8d030f               sta     0xf03
+    \ 00002f c220                 rep     #32
+0332                      SYSCALL_PARAMS.param4  = (unsigned char)(sprite_id & 0xFF);
+    \ 000031 e220                 sep     #32
+    \ 000033 a303                 lda     3,s
+    \ 000035 8d040f               sta     0xf04
+    \ 000038 c220                 rep     #32
+0333                      SYSCALL_PARAMS.param5  = (unsigned char)(sprite_id >> 8);
+    \ 00003a e220                 sep     #32
+    \ 00003c a304                 lda     4,s
+    \ 00003e 8d050f               sta     0xf05
+    \ 000041 c220                 rep     #32
+0334                  
+0335                      __asm(" cop #0x1e\n");
+    \ 000043 021e                 cop     #30
+0336                  }
+    \ 000045 7a                   ply
+    \ 000046 7a                   ply
+    \ 000047 6b                   rtl
+0337                  
+0338                  void os_tile_backup_8(unsigned short x, unsigned short y)
+0339                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_tile_backup_8
+    \ 000000          os_tile_backup_8:
+    \ 000000 aa                   tax
+    \ 000001 a4..                 ldy     dp:.tiny _Dp
+0340                      // SYSCALL_PARAMS: start_x_lo, start_x_hi, start_y_lo, start_y_hi
+0341                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 000003 8a                   txa
+    \ 000004 e220                 sep     #32
+    \ 000006 8d000f               sta     0xf00
+    \ 000009 c220                 rep     #32
+0342                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 00000b 8a                   txa
+    \ 00000c eb                   xba
+    \ 00000d 29ff00               and     ##255
+    \ 000010 e220                 sep     #32
+    \ 000012 8d010f               sta     0xf01
+    \ 000015 c220                 rep     #32
+0343                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 000017 98                   tya
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d020f               sta     0xf02
+    \ 00001d c220                 rep     #32
+0344                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 00001f 98                   tya
+    \ 000020 eb                   xba
+    \ 000021 29ff00               and     ##255
+    \ 000024 e220                 sep     #32
+    \ 000026 8d030f               sta     0xf03
+    \ 000029 c220                 rep     #32
+0345                  
+0346                      __asm(" cop #0x1f\n");
+    \ 00002b 021f                 cop     #31
+0347                  }
+    \ 00002d 6b                   rtl
+0348                  
+0349                  void os_tile_restore_8(unsigned short x, unsigned short y)
+0350                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public os_tile_restore_8
+    \ 000000          os_tile_restore_8:
+    \ 000000 aa                   tax
+    \ 000001 a4..                 ldy     dp:.tiny _Dp
+0351                      // SYSCALL_PARAMS: start_x_lo, start_x_hi, start_y_lo, start_y_hi
+0352                      SYSCALL_PARAMS.param0  = (unsigned char)(x & 0xFF);
+    \ 000003 8a                   txa
+    \ 000004 e220                 sep     #32
+    \ 000006 8d000f               sta     0xf00
+    \ 000009 c220                 rep     #32
+0353                      SYSCALL_PARAMS.param1  = (unsigned char)(x >> 8);
+    \ 00000b 8a                   txa
+    \ 00000c eb                   xba
+    \ 00000d 29ff00               and     ##255
+    \ 000010 e220                 sep     #32
+    \ 000012 8d010f               sta     0xf01
+    \ 000015 c220                 rep     #32
+0354                      SYSCALL_PARAMS.param2  = (unsigned char)(y & 0xFF);
+    \ 000017 98                   tya
+    \ 000018 e220                 sep     #32
+    \ 00001a 8d020f               sta     0xf02
+    \ 00001d c220                 rep     #32
+0355                      SYSCALL_PARAMS.param3  = (unsigned char)(y >> 8);
+    \ 00001f 98                   tya
+    \ 000020 eb                   xba
+    \ 000021 29ff00               and     ##255
+    \ 000024 e220                 sep     #32
+    \ 000026 8d030f               sta     0xf03
+    \ 000029 c220                 rep     #32
+0356                  
+0357                      __asm(" cop #0x20\n");
+    \ 00002b 0220                 cop     #32
+0358                  }
+    \ 00002d 6b                   rtl
+    \ 000000                      .section data,data
+    \ 000000                      .public mouse_x
+    \ 000000 a000     mouse_x:    .word   160
+    \ 000000                      .section data,data
+    \ 000000                      .public mouse_y
+    \ 000000 7800     mouse_y:    .word   120
+
+##########################
+#                        #
+# Memory sizes (decimal) #
+#                        #
+##########################
+
+Executable  (Text): 1479 bytes
+Data              :    4 bytes
