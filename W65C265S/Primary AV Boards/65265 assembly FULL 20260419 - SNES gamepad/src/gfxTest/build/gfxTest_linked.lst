@@ -1,0 +1,235 @@
+###############################################################################
+#                                                                             #
+# Calypsi linker for 65816                                       version 5.15 #
+#                                                       04/Apr/2026  00:13:46 #
+# Command line: --output-format=raw --raw-multiple-memories                   #
+#               --no-automatic-placement-rules --program-start=app_init       #
+#               --root-symbol=app_init --no-data-init-table-section           #
+#               build/gfxTest.o rules.scm -o build/gfxTest.rom                #
+#               --list-file=build/gfxTest_linked.lst                          #
+#                                                                             #
+###############################################################################
+
+####################
+#                  #
+# Memories summary #
+#                  #
+####################
+
+Name         Range         Size    Used    Checksum  Largest unallocated
+------------------------------------------------------------------------
+DirectPage   001800-0018ff 000100   60.2%  none      000066
+NearRAM_Vars 001900-00197f 000080    0.0%  none      000080
+NearRAM_Bits 001980-0019ff 000080   28.1%  none      00005c
+StackRAM     001a00-001fff 000600  100.0%  none      none
+Flash        008000-00ffef 007ff0    0.0%  none      007ff0
+Vector       00fff0-00ffff 000010   12.5%  none      00000c
+AppEntry     030000-03ffff 010000    0.3%  none      0000fa
+
+
+####################
+#                  #
+# Sections summary #
+#                  #
+####################
+
+Name      Range          Size    Memory       Fragments
+-------------------------------------------------------
+zfar      001800-001885  000086  DirectPage   3
+registers 001886-001899  000014  DirectPage   1
+code      001980-0019a3  000024  NearRAM_Bits 2
+stack     001a00-001fff  000600  StackRAM     1
+reset     00fffc-00fffd  000002  Vector       1
+appStart  030000-030005  000006  AppEntry     1
+farcode   030100-03017b  00007c  AppEntry     2
+cfar      03017c-03018f  000014  AppEntry     1
+farcode   030190-0301a4  000015  AppEntry     4
+
+
+################
+#              #
+# Object files #
+#              #
+################
+
+Unit Filename          Archive
+-----------------------------------
+  0  build/gfxTest.o   -
+          >  appStart 000006
+          >  cfar     000014
+          >  farcode  000026
+  2  cstartup.o        clib-lc-ld.a
+          # picked based on cstartup=normal (built-in default)
+          >  code    000024
+          >  farcode 000001
+          >  reset   000002
+  3  exit.o            clib-lc-ld.a
+          # picked based on exit=stdexit (built-in default)
+          >  farcode 000056
+  5  controlFlow.o     clib-lc-ld.a
+          >  farcode 00000e
+  6  pseudoRegisters.o clib-lc-ld.a
+          >  registers 000014
+  7  atexit.o          clib-lc-ld.a
+          >  zfar 000082
+  8  exitC99.o         clib-lc-ld.a
+          >  farcode 000005
+  9  defaultExit.o     clib-lc-ld.a
+          >  farcode 000001
+ 11  streamlist.o      clib-lc-ld.a
+          >  zfar 000004
+
+###################
+#                 #
+# Cross reference #
+#                 #
+###################
+
+__atexit_index in section 'zfar'
+ placed at address 001800-001801 of size 000002
+(atexit.o (from clib-lc-ld.a) unit 7 section index 3)
+    Defines:
+        __atexit_index = 001800
+    Referenced from:
+        exit (exit.o (from clib-lc-ld.a) unit 3 section index 2)
+
+__atexit in section 'zfar'  placed at address 001802-001881 of size 000080
+(atexit.o (from clib-lc-ld.a) unit 7 section index 2)
+    Defines:
+        __atexit = 001802
+    Referenced from:
+        exit (exit.o (from clib-lc-ld.a) unit 3 section index 2)
+
+_ExitCloseStreams in section 'zfar'
+ placed at address 001882-001885 of size 000004
+(streamlist.o (from clib-lc-ld.a) unit 11 section index 2)
+    Defines:
+        _ExitCloseStreams = 001882
+    Referenced from:
+        exit (exit.o (from clib-lc-ld.a) unit 3 section index 2)
+
+_Dp in section 'registers'  placed at address 001886-001899 of size 000014
+(pseudoRegisters.o (from clib-lc-ld.a) unit 6 section index 2)
+    Defines:
+        _Vfp = 001896
+        _Dp = 001886
+    Referenced from:
+        main (build/gfxTest.o unit 0 section index 3)
+        __program_start (cstartup.o (from clib-lc-ld.a) unit 2 section index 2)
+        exit (exit.o (from clib-lc-ld.a) unit 3 section index 2)
+        _JmpIndLong (controlFlow.o (from clib-lc-ld.a) unit 5 section index 3)
+
+__program_start in section 'code'
+ placed at address 001980-001998 of size 000019
+(cstartup.o (from clib-lc-ld.a) unit 2 section index 2)
+    Defines:
+        __program_start = 001980
+    References:
+        _DirectPageStart
+        _NearBaseAddress
+        .sectionEnd(stack)
+        _Vfp in (pseudoRegisters.o (from clib-lc-ld.a) unit 6 section index 2)
+        __low_level_init in (cstartup.o (from clib-lc-ld.a) unit 2 section index 8)
+    Referenced from:
+        __program_root_section (cstartup.o (from clib-lc-ld.a) unit 2 section index 7)
+
+Section 'code'  placed at address 001999-0019a3 of size 00000b
+(cstartup.o (from clib-lc-ld.a) unit 2 section index 6)
+    References:
+        exit in (exit.o (from clib-lc-ld.a) unit 3 section index 2)
+        main in (build/gfxTest.o unit 0 section index 3)
+
+Section 'stack'  placed at address 001a00-001fff of size 000600
+(linker generated)
+
+__program_root_section in section 'reset'
+ placed at address 00fffc-00fffd of size 000002
+(cstartup.o (from clib-lc-ld.a) unit 2 section index 7)
+    Defines:
+        __program_root_section = 00fffc
+    References:
+        __program_start in (cstartup.o (from clib-lc-ld.a) unit 2 section index 2)
+
+app_init in section 'appStart'  placed at address 030000-030005 of size 000006
+(build/gfxTest.o unit 0 section index 2)
+    Defines:
+        app_init = 030000
+    References:
+        main in (build/gfxTest.o unit 0 section index 3)
+
+exit in section 'farcode'  placed at address 030100-030155 of size 000056
+(exit.o (from clib-lc-ld.a) unit 3 section index 2)
+    Defines:
+        exit = 030100
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-ld.a) unit 6 section index 2)
+        _Exit in (exitC99.o (from clib-lc-ld.a) unit 8 section index 2)
+        _ExitCloseStreams in (streamlist.o (from clib-lc-ld.a) unit 11 section index 2)
+        _JmpIndLong in (controlFlow.o (from clib-lc-ld.a) unit 5 section index 3)
+        __atexit in (atexit.o (from clib-lc-ld.a) unit 7 section index 2)
+        __atexit_index in (atexit.o (from clib-lc-ld.a) unit 7 section index 3)
+    Referenced from:
+        (cstartup.o (from clib-lc-ld.a) unit 2 section index 6)
+
+main in section 'farcode'  placed at address 030156-03017b of size 000026
+(build/gfxTest.o unit 0 section index 3)
+    Defines:
+        main = 030156
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-ld.a) unit 6 section index 2)
+        `_StringLiteral_Hello from gfxTest!` in (build/gfxTest.o unit 0 section index 4)
+    Referenced from:
+        app_init (build/gfxTest.o unit 0 section index 2)
+        (cstartup.o (from clib-lc-ld.a) unit 2 section index 6)
+
+`_StringLiteral_Hello from gfxTest!` in section 'cfar'
+ placed at address 03017c-03018f of size 000014
+(build/gfxTest.o unit 0 section index 4)
+    Defines:
+        `_StringLiteral_Hello from gfxTest!` = 03017c
+    Referenced from:
+        main (build/gfxTest.o unit 0 section index 3)
+
+_JmpIndLong in section 'farcode'
+ placed at address 030190-03019d of size 00000e
+(controlFlow.o (from clib-lc-ld.a) unit 5 section index 3)
+    Defines:
+        _JmpIndLong = 030190
+    References:
+        _Dp in (pseudoRegisters.o (from clib-lc-ld.a) unit 6 section index 2)
+    Referenced from:
+        exit (exit.o (from clib-lc-ld.a) unit 3 section index 2)
+
+_Exit in section 'farcode'  placed at address 03019e-0301a2 of size 000005
+(exitC99.o (from clib-lc-ld.a) unit 8 section index 2)
+    Defines:
+        _Exit = 03019e
+    References:
+        _Stub_exit in (defaultExit.o (from clib-lc-ld.a) unit 9 section index 2)
+    Referenced from:
+        exit (exit.o (from clib-lc-ld.a) unit 3 section index 2)
+
+__low_level_init in section 'farcode'
+ placed at address 0301a3-0301a3 of size 000001
+(cstartup.o (from clib-lc-ld.a) unit 2 section index 8)
+    Defines:
+        __low_level_init = 0301a3
+    Referenced from:
+        __program_start (cstartup.o (from clib-lc-ld.a) unit 2 section index 2)
+
+_Stub_exit in section 'farcode'  placed at address 0301a4-0301a4 of size 000001
+(defaultExit.o (from clib-lc-ld.a) unit 9 section index 2)
+    Defines:
+        _Stub_exit = 0301a4
+    Referenced from:
+        _Exit (exitC99.o (from clib-lc-ld.a) unit 8 section index 2)
+
+##########################
+#                        #
+# Memory sizes (decimal) #
+#                        #
+##########################
+
+Executable       (Text):  209 bytes
+Data                   :  134 bytes
+Non-initialized        : 1556 bytes
