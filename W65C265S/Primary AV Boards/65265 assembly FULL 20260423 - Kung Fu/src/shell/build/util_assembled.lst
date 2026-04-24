@@ -1,0 +1,1319 @@
+###############################################################################
+#                                                                             #
+# Calypsi ISO C compiler for 65816                               version 5.15 #
+#                                                       23/Apr/2026  21:32:17 #
+# Command line: --code-model=large --data-model=small -c util.c -o            #
+#               build/util.o --list-file=build/util_assembled.lst             #
+#                                                                             #
+###############################################################################
+
+    \ 000000                      .rtmodel version,"1"
+    \ 000000                      .rtmodel codeModel,"large"
+    \ 000000                      .rtmodel dataModel,"small"
+    \ 000000                      .rtmodel core,"65816"
+    \ 000000                      .rtmodel huge,"0"
+    \ 000000                      .rtmodel target,"none-specified"
+    \ 000000                      .extern _Div16
+    \ 000000                      .extern _Dp
+    \ 000000                      .extern _Mod16
+    \ 000000                      .extern _Mul16
+    \ 000000                      .extern _UDivMod16
+    \ 000000                      .extern _UDivMod32
+    \ 000000                      .extern _Vfp
+    \ 000000                      .extern os_print_char
+    \ 000000                      .extern os_print_char_serial
+    \ 000000                      .extern os_puts
+0001                  #include "util.h"
+0002                  #include "os.h"
+0003                  
+0004                  void delay(long counts) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public delay
+    \ 000000          delay:
+    \ 000000 d4..                 pei     dp:.tiny (_Dp+8)
+    \ 000002 d4..                 pei     dp:.tiny (_Dp+10)
+    \ 000004 86..                 stx     dp:.tiny (_Dp+10)
+    \ 000006 85..                 sta     dp:.tiny (_Dp+8)
+0005                      volatile long i;
+0006                      volatile long j;
+0007                  
+0008                      for (i = 0; i < counts; i++) {
+    \ 000008 a90000               lda     ##0
+    \ 00000b 85..                 sta     dp:.tiny (_Dp+4)
+    \ 00000d a90000               lda     ##0
+    \ 000010 85..                 sta     dp:.tiny (_Dp+6)
+    \ 000012          `?L5`:
+    \ 000012 a5..                 lda     dp:.tiny (_Dp+4)
+    \ 000014 c5..                 cmp     dp:.tiny (_Dp+8)
+    \ 000016 a5..                 lda     dp:.tiny (_Dp+6)
+    \ 000018 e5..                 sbc     dp:.tiny (_Dp+10)
+    \ 00001a 5003                 bvc     `?L145`
+    \ 00001c 490080               eor     ##-32768
+    \ 00001f 3007     `?L145`:    bmi     `?L4`
+0009                          for (j = 0; j < 100; j++) {
+0010                              // volatile ensures the compiler doesn't 
+0011                              // delete this "useless" loop.
+0012                          }
+0013                      }
+0014                  }
+    \ 000021 7a                   ply
+    \ 000022 84..                 sty     dp:.tiny (_Dp+10)
+    \ 000024 7a                   ply
+    \ 000025 84..                 sty     dp:.tiny (_Dp+8)
+    \ 000027 6b                   rtl
+    \ 000028 a90000   `?L4`:      lda     ##0
+    \ 00002b 85..                 sta     dp:.tiny _Dp
+    \ 00002d a90000               lda     ##0
+    \ 000030 85..                 sta     dp:.tiny (_Dp+2)
+    \ 000032          `?L9`:
+    \ 000032 a5..                 lda     dp:.tiny _Dp
+    \ 000034 c96400               cmp     ##100
+    \ 000037 a5..                 lda     dp:.tiny (_Dp+2)
+    \ 000039 e90000               sbc     ##0
+    \ 00003c 5003                 bvc     `?L147`
+    \ 00003e 490080               eor     ##-32768
+    \ 000041 300e     `?L147`:    bmi     `?L8`
+    \ 000043 a6..                 ldx     dp:.tiny (_Dp+6)
+    \ 000045 a5..                 lda     dp:.tiny (_Dp+4)
+    \ 000047 1a                   inc     a
+    \ 000048 d001                 bne     `?L149`
+    \ 00004a e8                   inx
+    \ 00004b          `?L149`:
+    \ 00004b 86..                 stx     dp:.tiny (_Dp+6)
+    \ 00004d 85..                 sta     dp:.tiny (_Dp+4)
+    \ 00004f 80c1                 bra     `?L5`
+    \ 000051          `?L8`:
+    \ 000051 a6..                 ldx     dp:.tiny (_Dp+2)
+    \ 000053 a5..                 lda     dp:.tiny _Dp
+    \ 000055 1a                   inc     a
+    \ 000056 d001                 bne     `?L151`
+    \ 000058 e8                   inx
+    \ 000059          `?L151`:
+    \ 000059 86..                 stx     dp:.tiny (_Dp+2)
+    \ 00005b 85..                 sta     dp:.tiny _Dp
+    \ 00005d 80d3                 bra     `?L9`
+0015                  
+0016                  void delayms(unsigned short ms) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public delayms
+    \ 000000 a8       delayms:    tay
+0017                      volatile unsigned short i;
+0018                      volatile unsigned short j;
+0019                  
+0020                      for (i = 0; i < ms; i++) {
+    \ 000001 a20000               ldx     ##0
+    \ 000004 8a       `?L16`:     txa
+    \ 000005 84..                 sty     dp:.tiny _Dp
+    \ 000007 c5..                 cmp     dp:.tiny _Dp
+    \ 000009 9001                 bcc     `?L15`
+0021                          for (j = 0; j < 588; j++) {
+0022                              // Approximately 1ms per 'i' iteration at 10MHz
+0023                          }
+0024                      }
+0025                  }
+    \ 00000b 6b                   rtl
+    \ 00000c a90000   `?L15`:     lda     ##0
+    \ 00000f c94c02   `?L20`:     cmp     ##0x24c
+    \ 000012 9005                 bcc     `?L19`
+    \ 000014 8a                   txa
+    \ 000015 1a                   inc     a
+    \ 000016 aa                   tax
+    \ 000017 80eb                 bra     `?L16`
+    \ 000019 1a       `?L19`:     inc     a
+    \ 00001a 80f3                 bra     `?L20`
+0026                  
+0027                  void print_dec8(unsigned char val) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_dec8
+    \ 000000 5a       print_dec8: phy
+    \ 000001 e220                 sep     #32
+    \ 000003 8301                 sta     1,s
+    \ 000005 c220                 rep     #32
+0028                      if (val >= 10) {
+    \ 000007 a301                 lda     1,s
+    \ 000009 e220                 sep     #32
+    \ 00000b c90a                 cmp     #10
+    \ 00000d c220                 rep     #32
+    \ 00000f 9016                 bcc     `?L26`
+0029                          os_print_char((val / 10) + '0');
+    \ 000011 a301                 lda     1,s
+    \ 000013 29ff00               and     ##255
+    \ 000016 a20a00               ldx     ##10
+    \ 000019 22......             jsl     long:_Div16
+    \ 00001d 18                   clc
+    \ 00001e 693000               adc     ##48
+    \ 000021 22......             jsl     long:os_print_char
+    \ 000025 8007                 bra     `?L27`
+    \ 000027          `?L26`:
+0030                      } else {
+0031                          os_print_char('0'); // Leading zero for consistent formatting
+    \ 000027 a93000               lda     ##48
+    \ 00002a 22......             jsl     long:os_print_char
+    \ 00002e          `?L27`:
+0032                      }
+0033                      os_print_char((val % 10) + '0');
+    \ 00002e a301                 lda     1,s
+    \ 000030 29ff00               and     ##255
+    \ 000033 a20a00               ldx     ##10
+    \ 000036 22......             jsl     long:_Mod16
+    \ 00003a 18                   clc
+    \ 00003b 693000               adc     ##48
+    \ 00003e 22......             jsl     long:os_print_char
+0034                  }
+    \ 000042 7a                   ply
+    \ 000043 6b                   rtl
+0035                  
+0036                  void print_dec8_serial(unsigned char val) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_dec8_serial
+    \ 000000          print_dec8_serial:
+    \ 000000 5a                   phy
+    \ 000001 e220                 sep     #32
+    \ 000003 8301                 sta     1,s
+    \ 000005 c220                 rep     #32
+0037                      if (val >= 10) {
+    \ 000007 a301                 lda     1,s
+    \ 000009 e220                 sep     #32
+    \ 00000b c90a                 cmp     #10
+    \ 00000d c220                 rep     #32
+    \ 00000f 9016                 bcc     `?L32`
+0038                          os_print_char_serial((val / 10) + '0');
+    \ 000011 a301                 lda     1,s
+    \ 000013 29ff00               and     ##255
+    \ 000016 a20a00               ldx     ##10
+    \ 000019 22......             jsl     long:_Div16
+    \ 00001d 18                   clc
+    \ 00001e 693000               adc     ##48
+    \ 000021 22......             jsl     long:os_print_char_serial
+    \ 000025 8007                 bra     `?L33`
+    \ 000027          `?L32`:
+0039                      } else {
+0040                          os_print_char('0'); // Leading zero for consistent formatting
+    \ 000027 a93000               lda     ##48
+    \ 00002a 22......             jsl     long:os_print_char
+    \ 00002e          `?L33`:
+0041                      }
+0042                      os_print_char_serial((val % 10) + '0');
+    \ 00002e a301                 lda     1,s
+    \ 000030 29ff00               and     ##255
+    \ 000033 a20a00               ldx     ##10
+    \ 000036 22......             jsl     long:_Mod16
+    \ 00003a 18                   clc
+    \ 00003b 693000               adc     ##48
+    \ 00003e 22......             jsl     long:os_print_char_serial
+0043                  }
+    \ 000042 7a                   ply
+    \ 000043 6b                   rtl
+0044                  
+0045                  void print_dec_year(unsigned short val) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_dec_year
+    \ 000000          print_dec_year:
+    \ 000000 5a                   phy
+    \ 000001 8301                 sta     1,s
+0046                      // Basic 4-digit printer
+0047                      os_print_char((val / 1000) + '0');
+    \ 000003 a301                 lda     1,s
+    \ 000005 a2e803               ldx     ##1000
+    \ 000008 22......             jsl     long:_UDivMod16
+    \ 00000c 8a                   txa
+    \ 00000d 18                   clc
+    \ 00000e 693000               adc     ##48
+    \ 000011 22......             jsl     long:os_print_char
+0048                      os_print_char(((val / 100) % 10) + '0');
+    \ 000015 a301                 lda     1,s
+    \ 000017 a26400               ldx     ##100
+    \ 00001a 22......             jsl     long:_UDivMod16
+    \ 00001e 8a                   txa
+    \ 00001f a20a00               ldx     ##10
+    \ 000022 22......             jsl     long:_UDivMod16
+    \ 000026 18                   clc
+    \ 000027 693000               adc     ##48
+    \ 00002a 22......             jsl     long:os_print_char
+0049                      os_print_char(((val / 10) % 10) + '0');
+    \ 00002e a301                 lda     1,s
+    \ 000030 a20a00               ldx     ##10
+    \ 000033 22......             jsl     long:_UDivMod16
+    \ 000037 8a                   txa
+    \ 000038 a20a00               ldx     ##10
+    \ 00003b 22......             jsl     long:_UDivMod16
+    \ 00003f 18                   clc
+    \ 000040 693000               adc     ##48
+    \ 000043 22......             jsl     long:os_print_char
+0050                      os_print_char((val % 10) + '0');
+    \ 000047 a301                 lda     1,s
+    \ 000049 a20a00               ldx     ##10
+    \ 00004c 22......             jsl     long:_UDivMod16
+    \ 000050 18                   clc
+    \ 000051 693000               adc     ##48
+    \ 000054 22......             jsl     long:os_print_char
+0051                  }
+    \ 000058 7a                   ply
+    \ 000059 6b                   rtl
+0052                  
+0053                  void print_hex8(unsigned char val)
+0054                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_hex8
+    \ 000000 5a       print_hex8: phy
+    \ 000001 e220                 sep     #32
+    \ 000003 8302                 sta     2,s
+    \ 000005 c220                 rep     #32
+0055                     
+0056                      unsigned char high = (val >> 4) & 0x0f;
+    \ 000007 a302                 lda     2,s
+    \ 000009 e220                 sep     #32
+    \ 00000b 4a                   lsr     a
+    \ 00000c 4a                   lsr     a
+    \ 00000d 4a                   lsr     a
+    \ 00000e 4a                   lsr     a
+    \ 00000f c220                 rep     #32
+    \ 000011 290f00               and     ##15
+    \ 000014 e220                 sep     #32
+    \ 000016 8301                 sta     1,s
+    \ 000018 c220                 rep     #32
+0057                      unsigned char low = val & 0x0f;
+    \ 00001a e220                 sep     #32
+    \ 00001c a90f                 lda     #15
+    \ 00001e 2302                 and     2,s
+    \ 000020 8302                 sta     2,s
+    \ 000022 c220                 rep     #32
+0058                      
+0059                      os_print_char(hex_digits_far[high]);
+    \ 000024 a301                 lda     1,s
+    \ 000026 29ff00               and     ##255
+    \ 000029 aa                   tax
+    \ 00002a bf......             lda     long:hex_digits_far,x
+    \ 00002e 22......             jsl     long:os_print_char
+0060                      os_print_char(hex_digits_far[low]);
+    \ 000032 a302                 lda     2,s
+    \ 000034 29ff00               and     ##255
+    \ 000037 aa                   tax
+    \ 000038 bf......             lda     long:hex_digits_far,x
+    \ 00003c 22......             jsl     long:os_print_char
+0061                  }
+    \ 000040 7a                   ply
+    \ 000041 6b                   rtl
+0062                  
+0063                  void print_hex8_serial(unsigned char val)
+0064                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_hex8_serial
+    \ 000000          print_hex8_serial:
+    \ 000000 5a                   phy
+    \ 000001 e220                 sep     #32
+    \ 000003 8302                 sta     2,s
+    \ 000005 c220                 rep     #32
+0065                     
+0066                      unsigned char high = (val >> 4) & 0x0f;
+    \ 000007 a302                 lda     2,s
+    \ 000009 e220                 sep     #32
+    \ 00000b 4a                   lsr     a
+    \ 00000c 4a                   lsr     a
+    \ 00000d 4a                   lsr     a
+    \ 00000e 4a                   lsr     a
+    \ 00000f c220                 rep     #32
+    \ 000011 290f00               and     ##15
+    \ 000014 e220                 sep     #32
+    \ 000016 8301                 sta     1,s
+    \ 000018 c220                 rep     #32
+0067                      unsigned char low = val & 0x0f;
+    \ 00001a e220                 sep     #32
+    \ 00001c a90f                 lda     #15
+    \ 00001e 2302                 and     2,s
+    \ 000020 8302                 sta     2,s
+    \ 000022 c220                 rep     #32
+0068                      
+0069                      os_print_char_serial(hex_digits_far[high]);
+    \ 000024 a301                 lda     1,s
+    \ 000026 29ff00               and     ##255
+    \ 000029 aa                   tax
+    \ 00002a bf......             lda     long:hex_digits_far,x
+    \ 00002e 22......             jsl     long:os_print_char_serial
+0070                      os_print_char_serial(hex_digits_far[low]);
+    \ 000032 a302                 lda     2,s
+    \ 000034 29ff00               and     ##255
+    \ 000037 aa                   tax
+    \ 000038 bf......             lda     long:hex_digits_far,x
+    \ 00003c 22......             jsl     long:os_print_char_serial
+0071                  }
+    \ 000040 7a                   ply
+    \ 000041 6b                   rtl
+0072                  
+0073                  void print_hex16_serial(unsigned int value) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_hex16_serial
+    \ 000000          print_hex16_serial:
+    \ 000000 5a                   phy
+    \ 000001 8301                 sta     1,s
+0074                      // Send the high byte (Bank/High)
+0075                      print_hex8_serial((unsigned char)(value >> 8));
+    \ 000003 a302                 lda     2,s
+    \ 000005 22......             jsl     long:print_hex8_serial
+0076                      // Send the low byte
+0077                      print_hex8_serial((unsigned char)(value & 0x00FF));
+    \ 000009 a301                 lda     1,s
+    \ 00000b 22......             jsl     long:print_hex8_serial
+0078                  }
+    \ 00000f 7a                   ply
+    \ 000010 6b                   rtl
+0079                  
+0080                  void print_hex32(unsigned long val)
+0081                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_hex32
+    \ 000000          print_hex32:
+    \ 000000 d4..                 pei     dp:.tiny (_Dp+8)
+    \ 000002 d4..                 pei     dp:.tiny (_Dp+10)
+    \ 000004 5a                   phy
+    \ 000005 5a                   phy
+    \ 000006 86..                 stx     dp:.tiny (_Dp+10)
+    \ 000008 85..                 sta     dp:.tiny (_Dp+8)
+0082                      for (int shift = 28; shift >= 0; shift -= 4) {
+    \ 00000a a91c00               lda     ##28
+    \ 00000d 8301                 sta     1,s
+    \ 00000f a301                 lda     1,s
+    \ 000011 8303                 sta     3,s
+    \ 000013 a303     `?L51`:     lda     3,s
+    \ 000015 1009                 bpl     `?L50`
+0083                          unsigned char nib = (val >> shift) & 0x0F;
+0084                          os_print_char(hex_digits[nib]);
+0085                      }
+0086                  }
+    \ 000017 7a                   ply
+    \ 000018 7a                   ply
+    \ 000019 7a                   ply
+    \ 00001a 84..                 sty     dp:.tiny (_Dp+10)
+    \ 00001c 7a                   ply
+    \ 00001d 84..                 sty     dp:.tiny (_Dp+8)
+    \ 00001f 6b                   rtl
+    \ 000020          `?L50`:
+    \ 000020 a6..                 ldx     dp:.tiny (_Dp+10)
+    \ 000022 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000024 da                   phx
+    \ 000025 48                   pha
+    \ 000026 a307                 lda     7,s
+    \ 000028 a8                   tay
+    \ 000029 68                   pla
+    \ 00002a fa                   plx
+    \ 00002b 86..                 stx     dp:.tiny _Dp
+    \ 00002d c8                   iny
+    \ 00002e 88                   dey
+    \ 00002f f006                 beq     `?L179`
+    \ 000031          `?L180`:
+    \ 000031 46..                 lsr     dp:.tiny _Dp
+    \ 000033 6a                   ror     a
+    \ 000034 88                   dey
+    \ 000035 d0fa                 bne     `?L180`
+    \ 000037          `?L179`:
+    \ 000037 a6..                 ldx     dp:.tiny _Dp
+    \ 000039 86..                 stx     dp:.tiny (_Dp+2)
+    \ 00003b 85..                 sta     dp:.tiny _Dp
+    \ 00003d a5..                 lda     dp:.tiny (_Dp+2)
+    \ 00003f a90000               lda     ##0
+    \ 000042 aa                   tax
+    \ 000043 a5..                 lda     dp:.tiny _Dp
+    \ 000045 290f00               and     ##15
+    \ 000048 e220                 sep     #32
+    \ 00004a 8301                 sta     1,s
+    \ 00004c c220                 rep     #32
+    \ 00004e a301                 lda     1,s
+    \ 000050 29ff00               and     ##255
+    \ 000053 aa                   tax
+    \ 000054 bd....               lda     hex_digits,x
+    \ 000057 22......             jsl     long:os_print_char
+    \ 00005b a303                 lda     3,s
+    \ 00005d 38                   sec
+    \ 00005e e90400               sbc     ##4
+    \ 000061 8301                 sta     1,s
+    \ 000063 a301                 lda     1,s
+    \ 000065 8303                 sta     3,s
+    \ 000067 80aa                 bra     `?L51`
+0087                  
+0088                  void print_hex_serial(unsigned char val)
+0089                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_hex_serial
+    \ 000000          print_hex_serial:
+    \ 000000 5a                   phy
+    \ 000001 e220                 sep     #32
+    \ 000003 8302                 sta     2,s
+    \ 000005 c220                 rep     #32
+0090                      // Force 24-bit addressing for the lookup table
+0091                      // This prevents reading 'garbage' from the code bank (Bank 01)
+0092                      
+0093                      unsigned char high = (val >> 4) & 0x0f;
+    \ 000007 a302                 lda     2,s
+    \ 000009 e220                 sep     #32
+    \ 00000b 4a                   lsr     a
+    \ 00000c 4a                   lsr     a
+    \ 00000d 4a                   lsr     a
+    \ 00000e 4a                   lsr     a
+    \ 00000f c220                 rep     #32
+    \ 000011 290f00               and     ##15
+    \ 000014 e220                 sep     #32
+    \ 000016 8301                 sta     1,s
+    \ 000018 c220                 rep     #32
+0094                      unsigned char low = val & 0x0f;
+    \ 00001a e220                 sep     #32
+    \ 00001c a90f                 lda     #15
+    \ 00001e 2302                 and     2,s
+    \ 000020 8302                 sta     2,s
+    \ 000022 c220                 rep     #32
+0095                      
+0096                      os_print_char_serial(hex_digits_far[high]);
+    \ 000024 a301                 lda     1,s
+    \ 000026 29ff00               and     ##255
+    \ 000029 aa                   tax
+    \ 00002a bf......             lda     long:hex_digits_far,x
+    \ 00002e 22......             jsl     long:os_print_char_serial
+0097                      os_print_char_serial(hex_digits_far[low]);
+    \ 000032 a302                 lda     2,s
+    \ 000034 29ff00               and     ##255
+    \ 000037 aa                   tax
+    \ 000038 bf......             lda     long:hex_digits_far,x
+    \ 00003c 22......             jsl     long:os_print_char_serial
+0098                  }
+    \ 000040 7a                   ply
+    \ 000041 6b                   rtl
+0099                  
+0100                  unsigned char bcd_to_bin(unsigned char bcd)
+0101                  {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public bcd_to_bin
+    \ 000000 5a       bcd_to_bin: phy
+    \ 000001 e220                 sep     #32
+    \ 000003 8301                 sta     1,s
+    \ 000005 c220                 rep     #32
+0102                      // Convert BCD (e.g., 0x26) to standard Integer (26)
+0103                      return ((bcd >> 4) * 10) + (bcd & 0x0F);
+    \ 000007 a301                 lda     1,s
+    \ 000009 e220                 sep     #32
+    \ 00000b 4a                   lsr     a
+    \ 00000c 4a                   lsr     a
+    \ 00000d 4a                   lsr     a
+    \ 00000e 4a                   lsr     a
+    \ 00000f c220                 rep     #32
+    \ 000011 29ff00               and     ##255
+    \ 000014 a20a00               ldx     ##10
+    \ 000017 22......             jsl     long:_Mul16
+    \ 00001b 85..                 sta     dp:.tiny _Dp
+    \ 00001d a90f00               lda     ##15
+    \ 000020 2301                 and     1,s
+    \ 000022 29ff00               and     ##255
+    \ 000025 18                   clc
+    \ 000026 65..                 adc     dp:.tiny _Dp
+0104                  }
+    \ 000028 7a                   ply
+    \ 000029 6b                   rtl
+0105                  
+0106                  unsigned char hex_to_byte(char c) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public hex_to_byte
+    \ 000000          hex_to_byte:
+    \ 000000 5a                   phy
+    \ 000001 e220                 sep     #32
+    \ 000003 8301                 sta     1,s
+    \ 000005 c220                 rep     #32
+0107                      if (c >= '0' && c <= '9') return c - '0';
+    \ 000007 a301                 lda     1,s
+    \ 000009 e220                 sep     #32
+    \ 00000b c930                 cmp     #48
+    \ 00000d c220                 rep     #32
+    \ 00000f 9013                 bcc     `?L64`
+    \ 000011 a93900               lda     ##57
+    \ 000014 e220                 sep     #32
+    \ 000016 c301                 cmp     1,s
+    \ 000018 c220                 rep     #32
+    \ 00001a 9008                 bcc     `?L64`
+    \ 00001c a301                 lda     1,s
+    \ 00001e 38                   sec
+    \ 00001f e93000               sbc     ##48
+    \ 000022 803d                 bra     `?L63`
+    \ 000024          `?L64`:
+0108                      if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    \ 000024 a301                 lda     1,s
+    \ 000026 e220                 sep     #32
+    \ 000028 c941                 cmp     #65
+    \ 00002a c220                 rep     #32
+    \ 00002c 9013                 bcc     `?L68`
+    \ 00002e a94600               lda     ##70
+    \ 000031 e220                 sep     #32
+    \ 000033 c301                 cmp     1,s
+    \ 000035 c220                 rep     #32
+    \ 000037 9008                 bcc     `?L68`
+    \ 000039 a9c900               lda     ##201
+    \ 00003c 18                   clc
+    \ 00003d 6301                 adc     1,s
+    \ 00003f 8020                 bra     `?L63`
+    \ 000041          `?L68`:
+0109                      if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    \ 000041 a301                 lda     1,s
+    \ 000043 e220                 sep     #32
+    \ 000045 c961                 cmp     #97
+    \ 000047 c220                 rep     #32
+    \ 000049 9013                 bcc     `?L72`
+    \ 00004b a96600               lda     ##102
+    \ 00004e e220                 sep     #32
+    \ 000050 c301                 cmp     1,s
+    \ 000052 c220                 rep     #32
+    \ 000054 9008                 bcc     `?L72`
+    \ 000056 a9a900               lda     ##169
+    \ 000059 18                   clc
+    \ 00005a 6301                 adc     1,s
+    \ 00005c 8003                 bra     `?L63`
+    \ 00005e          `?L72`:
+0110                      return 0;
+    \ 00005e a90000               lda     ##0
+    \ 000061          `?L63`:
+0111                  }
+    \ 000061 7a                   ply
+    \ 000062 6b                   rtl
+0112                  
+0113                  unsigned long hex_to_long(char *str) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public hex_to_long
+    \ 000000          hex_to_long:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 8301                 sta     1,s
+0114                      unsigned long res = 0;
+    \ 000004 a90000               lda     ##0
+    \ 000007 85..                 sta     dp:.tiny _Dp
+    \ 000009 a90000               lda     ##0
+    \ 00000c 85..                 sta     dp:.tiny (_Dp+2)
+0115                      while (*str) {
+    \ 00000e a301                 lda     1,s
+    \ 000010 8303                 sta     3,s
+    \ 000012 a00000   `?L80`:     ldy     ##0
+    \ 000015 b303                 lda     (3,s),y
+    \ 000017 29ff00               and     ##255
+    \ 00001a d003                 bne     `?L212`
+    \ 00001c 4c....               jmp     .kbank `?L81`
+    \ 00001f          `?L212`:
+0116                          char c = *str++;
+    \ 00001f e220                 sep     #32
+    \ 000021 a00000               ldy     ##0
+    \ 000024 b303                 lda     (3,s),y
+    \ 000026 8301                 sta     1,s
+    \ 000028 c220                 rep     #32
+    \ 00002a a303                 lda     3,s
+    \ 00002c 1a                   inc     a
+    \ 00002d 8303                 sta     3,s
+    \ 00002f e220                 sep     #32
+    \ 000031 a301                 lda     1,s
+    \ 000033 8301                 sta     1,s
+    \ 000035 c220                 rep     #32
+0117                          if (c == ' ' || c == '\0') break;
+    \ 000037 a301                 lda     1,s
+    \ 000039 e220                 sep     #32
+    \ 00003b c920                 cmp     #32
+    \ 00003d c220                 rep     #32
+    \ 00003f d003                 bne     `?L213`
+    \ 000041 4c....               jmp     .kbank `?L85`
+    \ 000044 e220     `?L213`:    sep     #32
+    \ 000046 a301                 lda     1,s
+    \ 000048 c220                 rep     #32
+    \ 00004a d003                 bne     `?L214`
+    \ 00004c 4c....               jmp     .kbank `?L85`
+    \ 00004f          `?L214`:
+0118                          if (c == 'x' || c == 'X') continue; // Skip '0x' prefix if present
+    \ 00004f a301                 lda     1,s
+    \ 000051 e220                 sep     #32
+    \ 000053 c978                 cmp     #120
+    \ 000055 c220                 rep     #32
+    \ 000057 d003                 bne     `?L215`
+    \ 000059 4c....               jmp     .kbank `?L89`
+    \ 00005c a301     `?L215`:    lda     1,s
+    \ 00005e e220                 sep     #32
+    \ 000060 c958                 cmp     #88
+    \ 000062 c220                 rep     #32
+    \ 000064 d003                 bne     `?L216`
+    \ 000066 4c....               jmp     .kbank `?L89`
+    \ 000069          `?L216`:
+0119                          
+0120                          res <<= 4;
+    \ 000069 06..                 asl     dp:.tiny _Dp
+    \ 00006b 26..                 rol     dp:.tiny (_Dp+2)
+    \ 00006d 06..                 asl     dp:.tiny _Dp
+    \ 00006f 26..                 rol     dp:.tiny (_Dp+2)
+    \ 000071 06..                 asl     dp:.tiny _Dp
+    \ 000073 26..                 rol     dp:.tiny (_Dp+2)
+    \ 000075 06..                 asl     dp:.tiny _Dp
+    \ 000077 26..                 rol     dp:.tiny (_Dp+2)
+0121                          if (c >= '0' && c <= '9') res += (c - '0');
+    \ 000079 a301                 lda     1,s
+    \ 00007b e220                 sep     #32
+    \ 00007d c930                 cmp     #48
+    \ 00007f c220                 rep     #32
+    \ 000081 902a                 bcc     `?L91`
+    \ 000083 a93900               lda     ##57
+    \ 000086 e220                 sep     #32
+    \ 000088 c301                 cmp     1,s
+    \ 00008a c220                 rep     #32
+    \ 00008c 901f                 bcc     `?L91`
+    \ 00008e a301                 lda     1,s
+    \ 000090 29ff00               and     ##255
+    \ 000093 38                   sec
+    \ 000094 e93000               sbc     ##48
+    \ 000097 a20000               ldx     ##0
+    \ 00009a a8                   tay
+    \ 00009b 1001                 bpl     `?L187`
+    \ 00009d ca                   dex
+    \ 00009e 18       `?L187`:    clc
+    \ 00009f 65..                 adc     dp:.tiny _Dp
+    \ 0000a1 48                   pha
+    \ 0000a2 8a                   txa
+    \ 0000a3 65..                 adc     dp:.tiny (_Dp+2)
+    \ 0000a5 aa                   tax
+    \ 0000a6 68                   pla
+    \ 0000a7 86..                 stx     dp:.tiny (_Dp+2)
+    \ 0000a9 85..                 sta     dp:.tiny _Dp
+    \ 0000ab 8066                 bra     `?L92`
+    \ 0000ad          `?L91`:
+0122                          else if (c >= 'a' && c <= 'f') res += (c - 'a' + 10);
+    \ 0000ad a301                 lda     1,s
+    \ 0000af e220                 sep     #32
+    \ 0000b1 c961                 cmp     #97
+    \ 0000b3 c220                 rep     #32
+    \ 0000b5 902a                 bcc     `?L94`
+    \ 0000b7 a96600               lda     ##102
+    \ 0000ba e220                 sep     #32
+    \ 0000bc c301                 cmp     1,s
+    \ 0000be c220                 rep     #32
+    \ 0000c0 901f                 bcc     `?L94`
+    \ 0000c2 a301                 lda     1,s
+    \ 0000c4 29ff00               and     ##255
+    \ 0000c7 18                   clc
+    \ 0000c8 69a9ff               adc     ##-87
+    \ 0000cb a20000               ldx     ##0
+    \ 0000ce a8                   tay
+    \ 0000cf 1001                 bpl     `?L189`
+    \ 0000d1 ca                   dex
+    \ 0000d2 18       `?L189`:    clc
+    \ 0000d3 65..                 adc     dp:.tiny _Dp
+    \ 0000d5 48                   pha
+    \ 0000d6 8a                   txa
+    \ 0000d7 65..                 adc     dp:.tiny (_Dp+2)
+    \ 0000d9 aa                   tax
+    \ 0000da 68                   pla
+    \ 0000db 86..                 stx     dp:.tiny (_Dp+2)
+    \ 0000dd 85..                 sta     dp:.tiny _Dp
+    \ 0000df 8032                 bra     `?L95`
+    \ 0000e1          `?L94`:
+0123                          else if (c >= 'A' && c <= 'F') res += (c - 'A' + 10);
+    \ 0000e1 a301                 lda     1,s
+    \ 0000e3 e220                 sep     #32
+    \ 0000e5 c941                 cmp     #65
+    \ 0000e7 c220                 rep     #32
+    \ 0000e9 9028                 bcc     `?L97`
+    \ 0000eb a94600               lda     ##70
+    \ 0000ee e220                 sep     #32
+    \ 0000f0 c301                 cmp     1,s
+    \ 0000f2 c220                 rep     #32
+    \ 0000f4 901d                 bcc     `?L97`
+    \ 0000f6 a301                 lda     1,s
+    \ 0000f8 29ff00               and     ##255
+    \ 0000fb 18                   clc
+    \ 0000fc 69c9ff               adc     ##-55
+    \ 0000ff a20000               ldx     ##0
+    \ 000102 a8                   tay
+    \ 000103 1001                 bpl     `?L191`
+    \ 000105 ca                   dex
+    \ 000106 18       `?L191`:    clc
+    \ 000107 65..                 adc     dp:.tiny _Dp
+    \ 000109 48                   pha
+    \ 00010a 8a                   txa
+    \ 00010b 65..                 adc     dp:.tiny (_Dp+2)
+    \ 00010d aa                   tax
+    \ 00010e 68                   pla
+    \ 00010f 86..                 stx     dp:.tiny (_Dp+2)
+    \ 000111 85..                 sta     dp:.tiny _Dp
+    \ 000113          `?L95`:
+    \ 000113          `?L97`:
+    \ 000113          `?L98`:
+    \ 000113 a303     `?L92`:     lda     3,s
+    \ 000115 8303                 sta     3,s
+    \ 000117 4c....               jmp     .kbank `?L80`
+    \ 00011a a303     `?L89`:     lda     3,s
+    \ 00011c 8303                 sta     3,s
+    \ 00011e 4c....               jmp     .kbank `?L80`
+    \ 000121          `?L85`:
+    \ 000121          `?L81`:
+0124                      }
+0125                      return res;
+    \ 000121 a6..                 ldx     dp:.tiny (_Dp+2)
+    \ 000123 a5..                 lda     dp:.tiny _Dp
+0126                  }
+    \ 000125 7a                   ply
+    \ 000126 7a                   ply
+    \ 000127 6b                   rtl
+0127                  
+0128                  void print_dec32(unsigned long n) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_dec32
+    \ 000000          print_dec32:
+    \ 000000 d4..                 pei     dp:.tiny (_Dp+8)
+    \ 000002 d4..                 pei     dp:.tiny (_Dp+10)
+    \ 000004 a8                   tay
+    \ 000005 3b                   tsc
+    \ 000006 38                   sec
+    \ 000007 e91000               sbc     ##16
+    \ 00000a 1b                   tcs
+    \ 00000b 98                   tya
+    \ 00000c 86..                 stx     dp:.tiny (_Dp+10)
+    \ 00000e 85..                 sta     dp:.tiny (_Dp+8)
+0129                      char buffer[11]; // Max 4,294,967,295 plus null
+0130                      int i = 10;
+    \ 000010 a90a00               lda     ##10
+    \ 000013 8301                 sta     1,s
+0131                      buffer[i--] = '\0';
+    \ 000015 a301                 lda     1,s
+    \ 000017 aa                   tax
+    \ 000018 a301                 lda     1,s
+    \ 00001a 3a                   dec     a
+    \ 00001b a8                   tay
+    \ 00001c 3b                   tsc
+    \ 00001d 18                   clc
+    \ 00001e 690500               adc     ##5
+    \ 000021 86..                 stx     dp:.tiny _Dp
+    \ 000023 18                   clc
+    \ 000024 65..                 adc     dp:.tiny _Dp
+    \ 000026 aa                   tax
+    \ 000027 e220                 sep     #32
+    \ 000029 a900                 lda     #0
+    \ 00002b 9d0000               sta     0,x
+    \ 00002e c220                 rep     #32
+0132                  
+0133                      if (n == 0) {
+    \ 000030 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000032 05..                 ora     dp:.tiny (_Dp+10)
+    \ 000034 d009                 bne     `?L104`
+0134                          os_print_char('0');
+    \ 000036 a93000               lda     ##48
+    \ 000039 22......             jsl     long:os_print_char
+0135                          return;
+    \ 00003d 8067                 bra     `?L103`
+    \ 00003f          `?L104`:
+0136                      }
+0137                  
+0138                      while (n > 0) {
+    \ 00003f bb                   tyx
+    \ 000040          `?L108`:
+    \ 000040 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000042 05..                 ora     dp:.tiny (_Dp+10)
+    \ 000044 f050                 beq     `?L109`
+0139                          buffer[i--] = (n % 10) + '0';
+    \ 000046 8a                   txa
+    \ 000047 8301                 sta     1,s
+    \ 000049 8a                   txa
+    \ 00004a 3a                   dec     a
+    \ 00004b 8303                 sta     3,s
+    \ 00004d a5..                 lda     dp:.tiny (_Dp+8)
+    \ 00004f 85..                 sta     dp:.tiny _Dp
+    \ 000051 a5..                 lda     dp:.tiny (_Dp+10)
+    \ 000053 85..                 sta     dp:.tiny (_Dp+2)
+    \ 000055 a90a00               lda     ##10
+    \ 000058 85..                 sta     dp:.tiny (_Dp+4)
+    \ 00005a a90000               lda     ##0
+    \ 00005d 85..                 sta     dp:.tiny (_Dp+6)
+    \ 00005f 22......             jsl     long:_UDivMod32
+    \ 000063 a93000               lda     ##48
+    \ 000066 18                   clc
+    \ 000067 65..                 adc     dp:.tiny _Dp
+    \ 000069 48                   pha
+    \ 00006a 3b                   tsc
+    \ 00006b 18                   clc
+    \ 00006c 690700               adc     ##7
+    \ 00006f a8                   tay
+    \ 000070 68                   pla
+    \ 000071 e220                 sep     #32
+    \ 000073 9301                 sta     (1,s),y
+    \ 000075 c220                 rep     #32
+0140                          n /= 10;
+    \ 000077 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000079 85..                 sta     dp:.tiny _Dp
+    \ 00007b a5..                 lda     dp:.tiny (_Dp+10)
+    \ 00007d 85..                 sta     dp:.tiny (_Dp+2)
+    \ 00007f a90a00               lda     ##10
+    \ 000082 85..                 sta     dp:.tiny (_Dp+4)
+    \ 000084 a90000               lda     ##0
+    \ 000087 85..                 sta     dp:.tiny (_Dp+6)
+    \ 000089 22......             jsl     long:_UDivMod32
+    \ 00008d 86..                 stx     dp:.tiny (_Dp+10)
+    \ 00008f 85..                 sta     dp:.tiny (_Dp+8)
+    \ 000091 a303                 lda     3,s
+    \ 000093 aa                   tax
+    \ 000094 80aa                 bra     `?L108`
+    \ 000096          `?L109`:
+0141                      }
+0142                  
+0143                      os_puts(&buffer[i + 1]);
+    \ 000096 3b                   tsc
+    \ 000097 18                   clc
+    \ 000098 690500               adc     ##5
+    \ 00009b 85..                 sta     dp:.tiny _Dp
+    \ 00009d 8a                   txa
+    \ 00009e 1a                   inc     a
+    \ 00009f 18                   clc
+    \ 0000a0 65..                 adc     dp:.tiny _Dp
+    \ 0000a2 22......             jsl     long:os_puts
+    \ 0000a6          `?L103`:
+0144                  }
+    \ 0000a6 3b                   tsc
+    \ 0000a7 18                   clc
+    \ 0000a8 691000               adc     ##16
+    \ 0000ab 1b                   tcs
+    \ 0000ac 7a                   ply
+    \ 0000ad 84..                 sty     dp:.tiny (_Dp+10)
+    \ 0000af 7a                   ply
+    \ 0000b0 84..                 sty     dp:.tiny (_Dp+8)
+    \ 0000b2 6b                   rtl
+0145                  
+0146                  void print_padded_dec32(unsigned long n) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public print_padded_dec32
+    \ 000000          print_padded_dec32:
+    \ 000000 d4..                 pei     dp:.tiny (_Dp+8)
+    \ 000002 d4..                 pei     dp:.tiny (_Dp+10)
+    \ 000004 a8                   tay
+    \ 000005 3b                   tsc
+    \ 000006 38                   sec
+    \ 000007 e90e00               sbc     ##14
+    \ 00000a 1b                   tcs
+    \ 00000b 98                   tya
+    \ 00000c 86..                 stx     dp:.tiny (_Dp+10)
+    \ 00000e 85..                 sta     dp:.tiny (_Dp+8)
+0147                      char buffer[11];
+0148                      signed char i = 10;
+    \ 000010 e220                 sep     #32
+    \ 000012 a90a                 lda     #10
+    \ 000014 8303                 sta     3,s
+    \ 000016 c220                 rep     #32
+0149                      unsigned char count = 0;
+    \ 000018 e220                 sep     #32
+    \ 00001a a900                 lda     #0
+    \ 00001c 8301                 sta     1,s
+    \ 00001e c220                 rep     #32
+0150                      buffer[i--] = '\0';
+    \ 000020 e220                 sep     #32
+    \ 000022 a303                 lda     3,s
+    \ 000024 8302                 sta     2,s
+    \ 000026 c220                 rep     #32
+    \ 000028 3b                   tsc
+    \ 000029 18                   clc
+    \ 00002a 690300               adc     ##3
+    \ 00002d aa                   tax
+    \ 00002e e220                 sep     #32
+    \ 000030 de0000               dec     0,x
+    \ 000033 c220                 rep     #32
+    \ 000035 3b                   tsc
+    \ 000036 18                   clc
+    \ 000037 690400               adc     ##4
+    \ 00003a 85..                 sta     dp:.tiny _Dp
+    \ 00003c a302                 lda     2,s
+    \ 00003e 498000               eor     ##128
+    \ 000041 29ff00               and     ##255
+    \ 000044 38                   sec
+    \ 000045 e98000               sbc     ##128
+    \ 000048 18                   clc
+    \ 000049 65..                 adc     dp:.tiny _Dp
+    \ 00004b aa                   tax
+    \ 00004c e220                 sep     #32
+    \ 00004e a900                 lda     #0
+    \ 000050 9d0000               sta     0,x
+    \ 000053 c220                 rep     #32
+0151                  
+0152                      if (n == 0) {
+    \ 000055 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000057 05..                 ora     dp:.tiny (_Dp+10)
+    \ 000059 d01a                 bne     `?L114`
+0153                          os_print_char('0');
+    \ 00005b a93000               lda     ##48
+    \ 00005e 22......             jsl     long:os_print_char
+0154                          count = 1;
+    \ 000062 e220                 sep     #32
+    \ 000064 a901                 lda     #1
+    \ 000066 8301                 sta     1,s
+    \ 000068 c220                 rep     #32
+    \ 00006a e220                 sep     #32
+    \ 00006c a301                 lda     1,s
+    \ 00006e 8301                 sta     1,s
+    \ 000070 c220                 rep     #32
+    \ 000072 4c....               jmp     .kbank `?L115`
+    \ 000075          `?L114`:
+0155                      } else {
+0156                          // Simple decimal conversion without heavy division
+0157                          while (n > 0) {
+    \ 000075 e220                 sep     #32
+    \ 000077 a303                 lda     3,s
+    \ 000079 8302                 sta     2,s
+    \ 00007b c220                 rep     #32
+    \ 00007d e220                 sep     #32
+    \ 00007f a301                 lda     1,s
+    \ 000081 8303                 sta     3,s
+    \ 000083 c220                 rep     #32
+    \ 000085          `?L117`:
+    \ 000085 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 000087 05..                 ora     dp:.tiny (_Dp+10)
+    \ 000089 d003                 bne     `?L217`
+    \ 00008b 4c....               jmp     .kbank `?L118`
+    \ 00008e          `?L217`:
+0158                              buffer[i--] = (n % 10) + '0';
+    \ 00008e e220                 sep     #32
+    \ 000090 a302                 lda     2,s
+    \ 000092 8301                 sta     1,s
+    \ 000094 c220                 rep     #32
+    \ 000096 3b                   tsc
+    \ 000097 1a                   inc     a
+    \ 000098 1a                   inc     a
+    \ 000099 aa                   tax
+    \ 00009a e220                 sep     #32
+    \ 00009c de0000               dec     0,x
+    \ 00009f c220                 rep     #32
+    \ 0000a1 a5..                 lda     dp:.tiny (_Dp+8)
+    \ 0000a3 85..                 sta     dp:.tiny _Dp
+    \ 0000a5 a5..                 lda     dp:.tiny (_Dp+10)
+    \ 0000a7 85..                 sta     dp:.tiny (_Dp+2)
+    \ 0000a9 a90a00               lda     ##10
+    \ 0000ac 85..                 sta     dp:.tiny (_Dp+4)
+    \ 0000ae a90000               lda     ##0
+    \ 0000b1 85..                 sta     dp:.tiny (_Dp+6)
+    \ 0000b3 22......             jsl     long:_UDivMod32
+    \ 0000b7 a93000               lda     ##48
+    \ 0000ba 18                   clc
+    \ 0000bb 65..                 adc     dp:.tiny _Dp
+    \ 0000bd 48                   pha
+    \ 0000be 3b                   tsc
+    \ 0000bf 18                   clc
+    \ 0000c0 690600               adc     ##6
+    \ 0000c3 85..                 sta     dp:.tiny _Dp
+    \ 0000c5 a303                 lda     3,s
+    \ 0000c7 498000               eor     ##128
+    \ 0000ca 29ff00               and     ##255
+    \ 0000cd 38                   sec
+    \ 0000ce e98000               sbc     ##128
+    \ 0000d1 18                   clc
+    \ 0000d2 65..                 adc     dp:.tiny _Dp
+    \ 0000d4 aa                   tax
+    \ 0000d5 68                   pla
+    \ 0000d6 e220                 sep     #32
+    \ 0000d8 9d0000               sta     0,x
+    \ 0000db c220                 rep     #32
+0159                              n /= 10;
+    \ 0000dd a5..                 lda     dp:.tiny (_Dp+8)
+    \ 0000df 85..                 sta     dp:.tiny _Dp
+    \ 0000e1 a5..                 lda     dp:.tiny (_Dp+10)
+    \ 0000e3 85..                 sta     dp:.tiny (_Dp+2)
+    \ 0000e5 a90a00               lda     ##10
+    \ 0000e8 85..                 sta     dp:.tiny (_Dp+4)
+    \ 0000ea a90000               lda     ##0
+    \ 0000ed 85..                 sta     dp:.tiny (_Dp+6)
+    \ 0000ef 22......             jsl     long:_UDivMod32
+    \ 0000f3 86..                 stx     dp:.tiny (_Dp+10)
+    \ 0000f5 85..                 sta     dp:.tiny (_Dp+8)
+0160                              count++;
+    \ 0000f7 a303                 lda     3,s
+    \ 0000f9 1a                   inc     a
+    \ 0000fa e220                 sep     #32
+    \ 0000fc 8301                 sta     1,s
+    \ 0000fe c220                 rep     #32
+    \ 000100 e220                 sep     #32
+    \ 000102 a302                 lda     2,s
+    \ 000104 8302                 sta     2,s
+    \ 000106 c220                 rep     #32
+    \ 000108 e220                 sep     #32
+    \ 00010a a301                 lda     1,s
+    \ 00010c 8303                 sta     3,s
+    \ 00010e c220                 rep     #32
+    \ 000110 4c....               jmp     .kbank `?L117`
+    \ 000113          `?L118`:
+0161                          }
+0162                          os_puts(&buffer[i + 1]);
+    \ 000113 3b                   tsc
+    \ 000114 18                   clc
+    \ 000115 690400               adc     ##4
+    \ 000118 85..                 sta     dp:.tiny _Dp
+    \ 00011a a302                 lda     2,s
+    \ 00011c 498000               eor     ##128
+    \ 00011f 29ff00               and     ##255
+    \ 000122 38                   sec
+    \ 000123 e98000               sbc     ##128
+    \ 000126 1a                   inc     a
+    \ 000127 18                   clc
+    \ 000128 65..                 adc     dp:.tiny _Dp
+    \ 00012a 22......             jsl     long:os_puts
+    \ 00012e e220                 sep     #32
+    \ 000130 a303                 lda     3,s
+    \ 000132 8301                 sta     1,s
+    \ 000134 c220                 rep     #32
+    \ 000136          `?L115`:
+0163                      }
+0164                  
+0165                      // Pad the rest of the 15-character column with spaces
+0166                      // This replaces the "leading zeros" with "trailing spaces"
+0167                      for (unsigned char s = count; s < 15; s++) {
+    \ 000136 e220                 sep     #32
+    \ 000138 a301                 lda     1,s
+    \ 00013a 8301                 sta     1,s
+    \ 00013c c220                 rep     #32
+    \ 00013e e220                 sep     #32
+    \ 000140 a301                 lda     1,s
+    \ 000142 8301                 sta     1,s
+    \ 000144 c220                 rep     #32
+    \ 000146 a301     `?L121`:    lda     1,s
+    \ 000148 e220                 sep     #32
+    \ 00014a c90f                 cmp     #15
+    \ 00014c c220                 rep     #32
+    \ 00014e 900d                 bcc     `?L120`
+0168                          os_print_char(' ');
+0169                      }
+0170                  }
+    \ 000150 3b                   tsc
+    \ 000151 18                   clc
+    \ 000152 690e00               adc     ##14
+    \ 000155 1b                   tcs
+    \ 000156 7a                   ply
+    \ 000157 84..                 sty     dp:.tiny (_Dp+10)
+    \ 000159 7a                   ply
+    \ 00015a 84..                 sty     dp:.tiny (_Dp+8)
+    \ 00015c 6b                   rtl
+    \ 00015d a92000   `?L120`:    lda     ##32
+    \ 000160 22......             jsl     long:os_print_char
+    \ 000164 3b                   tsc
+    \ 000165 1a                   inc     a
+    \ 000166 aa                   tax
+    \ 000167 e220                 sep     #32
+    \ 000169 fe0000               inc     0,x
+    \ 00016c c220                 rep     #32
+    \ 00016e e220                 sep     #32
+    \ 000170 a301                 lda     1,s
+    \ 000172 8301                 sta     1,s
+    \ 000174 c220                 rep     #32
+    \ 000176 80ce                 bra     `?L121`
+0171                  
+0172                  unsigned char dec_to_bcd(unsigned char val) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public dec_to_bcd
+    \ 000000 5a       dec_to_bcd: phy
+    \ 000001 e220                 sep     #32
+    \ 000003 8301                 sta     1,s
+    \ 000005 c220                 rep     #32
+0173                      unsigned char tens = 0;
+    \ 000007 e220                 sep     #32
+    \ 000009 a900                 lda     #0
+    \ 00000b 8302                 sta     2,s
+    \ 00000d c220                 rep     #32
+0174                      while (val >= 10) {
+    \ 00000f e220                 sep     #32
+    \ 000011 a301                 lda     1,s
+    \ 000013 8301                 sta     1,s
+    \ 000015 c220                 rep     #32
+    \ 000017 e220                 sep     #32
+    \ 000019 a302                 lda     2,s
+    \ 00001b 8302                 sta     2,s
+    \ 00001d c220                 rep     #32
+    \ 00001f a301     `?L127`:    lda     1,s
+    \ 000021 e220                 sep     #32
+    \ 000023 c90a                 cmp     #10
+    \ 000025 c220                 rep     #32
+    \ 000027 9029                 bcc     `?L128`
+0175                          val -= 10;
+    \ 000029 a301                 lda     1,s
+    \ 00002b 38                   sec
+    \ 00002c e90a00               sbc     ##10
+    \ 00002f e220                 sep     #32
+    \ 000031 8301                 sta     1,s
+    \ 000033 c220                 rep     #32
+0176                          tens++;
+    \ 000035 3b                   tsc
+    \ 000036 1a                   inc     a
+    \ 000037 1a                   inc     a
+    \ 000038 aa                   tax
+    \ 000039 e220                 sep     #32
+    \ 00003b fe0000               inc     0,x
+    \ 00003e c220                 rep     #32
+    \ 000040 e220                 sep     #32
+    \ 000042 a301                 lda     1,s
+    \ 000044 8301                 sta     1,s
+    \ 000046 c220                 rep     #32
+    \ 000048 e220                 sep     #32
+    \ 00004a a302                 lda     2,s
+    \ 00004c 8302                 sta     2,s
+    \ 00004e c220                 rep     #32
+    \ 000050 80cd                 bra     `?L127`
+    \ 000052          `?L128`:
+0177                      }
+0178                      return (unsigned char)((tens << 4) | val);
+    \ 000052 a302                 lda     2,s
+    \ 000054 0a                   asl     a
+    \ 000055 0a                   asl     a
+    \ 000056 0a                   asl     a
+    \ 000057 0a                   asl     a
+    \ 000058 0301                 ora     1,s
+0179                  }
+    \ 00005a 7a                   ply
+    \ 00005b 6b                   rtl
+0180                  
+0181                  void int_to_ascii(unsigned short val, char* buf) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public int_to_ascii
+    \ 000000          int_to_ascii:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 8301                 sta     1,s
+    \ 000004 a5..                 lda     dp:.tiny _Dp
+    \ 000006 8303                 sta     3,s
+0182                      int i = 0;
+    \ 000008 a90000               lda     ##0
+0183                      // Handle the three digits for 0-999
+0184                      buf[0] = (val / 100) + '0';       // Hundreds
+    \ 00000b a301                 lda     1,s
+    \ 00000d a26400               ldx     ##100
+    \ 000010 22......             jsl     long:_UDivMod16
+    \ 000014 8a                   txa
+    \ 000015 18                   clc
+    \ 000016 693000               adc     ##48
+    \ 000019 e220                 sep     #32
+    \ 00001b a00000               ldy     ##0
+    \ 00001e 9303                 sta     (3,s),y
+    \ 000020 c220                 rep     #32
+0185                      buf[1] = ((val / 10) % 10) + '0'; // Tens
+    \ 000022 a301                 lda     1,s
+    \ 000024 a20a00               ldx     ##10
+    \ 000027 22......             jsl     long:_UDivMod16
+    \ 00002b 8a                   txa
+    \ 00002c a20a00               ldx     ##10
+    \ 00002f 22......             jsl     long:_UDivMod16
+    \ 000033 18                   clc
+    \ 000034 693000               adc     ##48
+    \ 000037 e220                 sep     #32
+    \ 000039 a00100               ldy     ##1
+    \ 00003c 9303                 sta     (3,s),y
+    \ 00003e c220                 rep     #32
+0186                      buf[2] = (val % 10) + '0';        // Ones
+    \ 000040 a301                 lda     1,s
+    \ 000042 a20a00               ldx     ##10
+    \ 000045 22......             jsl     long:_UDivMod16
+    \ 000049 18                   clc
+    \ 00004a 693000               adc     ##48
+    \ 00004d e220                 sep     #32
+    \ 00004f a00200               ldy     ##2
+    \ 000052 9303                 sta     (3,s),y
+    \ 000054 c220                 rep     #32
+0187                      buf[3] = '\0';                    // Null terminate
+    \ 000056 e220                 sep     #32
+    \ 000058 a900                 lda     #0
+    \ 00005a a00300               ldy     ##3
+    \ 00005d 9303                 sta     (3,s),y
+    \ 00005f c220                 rep     #32
+0188                  }
+    \ 000061 7a                   ply
+    \ 000062 7a                   ply
+    \ 000063 6b                   rtl
+0189                  
+0190                  void int_to_ascii_dec(unsigned short val, char* buf) {
+    \ 000000                      .section farcode,text
+    \ 000000                      .public int_to_ascii_dec
+    \ 000000          int_to_ascii_dec:
+    \ 000000 5a                   phy
+    \ 000001 5a                   phy
+    \ 000002 8301                 sta     1,s
+    \ 000004 a5..                 lda     dp:.tiny _Dp
+    \ 000006 8303                 sta     3,s
+0191                      // Handle 0-9999
+0192                      buf[0] = (val / 1000) + '0';          // Thousands (2)
+    \ 000008 a301                 lda     1,s
+    \ 00000a a2e803               ldx     ##1000
+    \ 00000d 22......             jsl     long:_UDivMod16
+    \ 000011 8a                   txa
+    \ 000012 18                   clc
+    \ 000013 693000               adc     ##48
+    \ 000016 e220                 sep     #32
+    \ 000018 a00000               ldy     ##0
+    \ 00001b 9303                 sta     (3,s),y
+    \ 00001d c220                 rep     #32
+0193                      buf[1] = ((val / 100) % 10) + '0';    // Hundreds  (0)
+    \ 00001f a301                 lda     1,s
+    \ 000021 a26400               ldx     ##100
+    \ 000024 22......             jsl     long:_UDivMod16
+    \ 000028 8a                   txa
+    \ 000029 a20a00               ldx     ##10
+    \ 00002c 22......             jsl     long:_UDivMod16
+    \ 000030 18                   clc
+    \ 000031 693000               adc     ##48
+    \ 000034 e220                 sep     #32
+    \ 000036 a00100               ldy     ##1
+    \ 000039 9303                 sta     (3,s),y
+    \ 00003b c220                 rep     #32
+0194                      buf[2] = ((val / 10) % 10) + '0';     // Tens      (0)
+    \ 00003d a301                 lda     1,s
+    \ 00003f a20a00               ldx     ##10
+    \ 000042 22......             jsl     long:_UDivMod16
+    \ 000046 8a                   txa
+    \ 000047 a20a00               ldx     ##10
+    \ 00004a 22......             jsl     long:_UDivMod16
+    \ 00004e 18                   clc
+    \ 00004f 693000               adc     ##48
+    \ 000052 e220                 sep     #32
+    \ 000054 a00200               ldy     ##2
+    \ 000057 9303                 sta     (3,s),y
+    \ 000059 c220                 rep     #32
+0195                      buf[3] = (val % 10) + '0';            // Ones      (0)
+    \ 00005b a301                 lda     1,s
+    \ 00005d a20a00               ldx     ##10
+    \ 000060 22......             jsl     long:_UDivMod16
+    \ 000064 18                   clc
+    \ 000065 693000               adc     ##48
+    \ 000068 e220                 sep     #32
+    \ 00006a a00300               ldy     ##3
+    \ 00006d 9303                 sta     (3,s),y
+    \ 00006f c220                 rep     #32
+0196                      buf[4] = '\0';                        // Null terminate
+    \ 000071 e220                 sep     #32
+    \ 000073 a900                 lda     #0
+    \ 000075 a00400               ldy     ##4
+    \ 000078 9303                 sta     (3,s),y
+    \ 00007a c220                 rep     #32
+0197                  }
+    \ 00007c 7a                   ply
+    \ 00007d 7a                   ply
+    \ 00007e 6b                   rtl
+    \ 000000                      .section data,data
+    \ 000000                      .public mouse_x
+    \ 000000 a000     mouse_x:    .word   160
+    \ 000000                      .section data,data
+    \ 000000                      .public mouse_y
+    \ 000000 7800     mouse_y:    .word   120
+    \ 000000                      .section data,data
+    \ 000000                      .public nes_x
+    \ 000000 a000     nes_x:      .word   160
+    \ 000000                      .section data,data
+    \ 000000                      .public nes_y
+    \ 000000 7800     nes_y:      .word   120
+    \ 000000                      .section cfar,rodata
+    \ 000000                      .public hex_digits_far
+    \ 000000          hex_digits_far:
+    \ 000000 30313233             .byte   48,49,50,51,52,53,54,55
+    \ 000004 34353637
+    \ 000008 38394142             .byte   56,57,65,66,67,68,69,70
+    \ 00000c 43444546
+    \ 000010 00                   .byte   0
+    \ 000000                      .section cdata,rodata
+    \ 000000                      .public hex_digits
+    \ 000000 30313233 hex_digits: .byte   48,49,50,51,52,53,54,55
+    \ 000004 34353637
+    \ 000008 38394142             .byte   56,57,65,66,67,68,69,70
+    \ 00000c 43444546
+    \ 000010 00                   .byte   0
+
+##########################
+#                        #
+# Memory sizes (decimal) #
+#                        #
+##########################
+
+Executable        (Text): 1980 bytes
+Data                    :    8 bytes
+Constant                :   17 bytes
+Constant   __far        :   17 bytes
